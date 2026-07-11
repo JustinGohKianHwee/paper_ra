@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { createSynthesisNote } from "@/actions/synthesis";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
 import { defaultSynthesisTitle, periodStartFor } from "@/lib/templates/synthesis";
 import type { SynthesisKind } from "@/lib/validation/enums";
 
-export function NewSynthesisForm() {
+export function NewSynthesisForm({ aiEnabled }: { aiEnabled: boolean }) {
   const [kind, setKind] = useState<SynthesisKind>("weekly");
   const [periodStart, setPeriodStart] = useState(() => periodStartFor("weekly", new Date()));
   const [title, setTitle] = useState(() =>
@@ -32,21 +33,25 @@ export function NewSynthesisForm() {
     setTitle(defaultSynthesisTitle(next, start));
   }
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function submit(withAiDraft: boolean) {
     setError(null);
     startTransition(async () => {
-      const result = await createSynthesisNote({
-        kind,
-        period_start: periodStart,
-        title,
-        body_md: "",
-      });
+      const result = await createSynthesisNote(
+        { kind, period_start: periodStart, title, body_md: "" },
+        { withAiDraft }
+      );
       if (result && !result.ok) {
         setError(result.error ?? "Failed to create note");
         toast.error(result.error ?? "Failed to create note");
+      } else if (result?.notice) {
+        toast.info(result.notice);
       }
     });
+  }
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submit(false);
   }
 
   return (
@@ -92,9 +97,24 @@ export function NewSynthesisForm() {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Creating…" : "Create from template"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        {aiEnabled ? (
+          <Button type="button" onClick={() => submit(true)} disabled={pending}>
+            <Sparkles className="size-4" />
+            {pending ? "Working…" : "Draft with AI"}
+          </Button>
+        ) : null}
+        <Button type="submit" variant={aiEnabled ? "outline" : "default"} disabled={pending}>
+          {pending ? "Creating…" : "Start from blank template"}
+        </Button>
+      </div>
+      {aiEnabled ? (
+        <p className="text-[11px] text-muted-foreground">
+          The AI draft is built only from this period&apos;s recorded activity (papers, sessions, notes,
+          questions, misconceptions, concepts, experiments). You review and edit it before
+          approving; the original draft is kept alongside your version.
+        </p>
+      ) : null}
     </form>
   );
 }

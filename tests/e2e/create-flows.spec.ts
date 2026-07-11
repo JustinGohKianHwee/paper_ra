@@ -19,20 +19,23 @@ test.beforeEach(async ({ page }) => {
 test("create a paper manually with a topic link", async ({ page }) => {
   const title = `E2E Created Paper ${Date.now().toString(36)}`;
 
-  await page.goto("/papers/new");
+  await page.goto("/papers/new/manual");
   await page.getByLabel("Title *").fill(title);
   await page.getByLabel("Organisation").fill("Test Org");
   await page.getByLabel("Year").fill("2026");
   await page.getByRole("checkbox", { name: "Sequential Recommendation" }).check();
   await page.getByRole("button", { name: "Create paper" }).click();
 
-  // Redirects to the new paper page with the full template.
+  // Redirects to the paper's view mode.
   await expect(page).toHaveURL(/\/papers\/e2e-created-paper/);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "One-sentence thesis" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Sequential Recommendation" })).toBeVisible();
   // New manual papers start honest: metadata only.
   await expect(page.getByText("Metadata only").first()).toBeVisible();
+
+  // The full structured template exists on the notes surface.
+  await page.getByRole("link", { name: "Structured notes" }).click();
+  await expect(page.getByRole("heading", { name: "One-sentence thesis" })).toBeVisible();
 });
 
 test("record a misconception and see it on the list and dashboard", async ({ page }) => {
@@ -52,14 +55,15 @@ test("record a misconception and see it on the list and dashboard", async ({ pag
   await expect(page.getByText(new RegExp(marker))).toBeVisible();
 });
 
-test("create a weekly synthesis note from the template", async ({ page }) => {
+test("create a synthesis note from the blank template", async ({ page }) => {
   await page.goto("/synthesis/new");
   const title = `E2E Synthesis ${Date.now().toString(36)}`;
+  // Unique past period so reruns never collide with existing notes.
+  const day = 1 + Math.floor(Math.random() * 28);
+  await page.getByLabel("Period start").fill(`2019-03-${String(day).padStart(2, "0")}`);
   await page.getByLabel("Title").fill(title);
-  await page.getByRole("button", { name: "Create from template" }).click();
+  await page.getByRole("button", { name: "Start from blank template" }).click();
 
-  // Either lands on the note, or the weekly note for this period already
-  // exists (seeded runs) and shows a clear error.
   const created = await page
     .waitForURL(/\/synthesis\/[0-9a-f-]+/, { timeout: 10_000 })
     .then(() => true)

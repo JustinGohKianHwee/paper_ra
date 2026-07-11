@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertTriangle,
+  Timer,
   ArrowRight,
   BookOpen,
   FlaskConical,
@@ -56,6 +57,8 @@ export default async function DashboardPage() {
   const monthStart = periodStartFor("monthly", new Date());
 
   const [
+    activeSessionRes,
+    continueHintsRes,
     continueReadingRes,
     recentlyEditedRes,
     queueRes,
@@ -68,6 +71,18 @@ export default async function DashboardPage() {
     weeklySynthRes,
     monthlySynthRes,
   ] = await Promise.all([
+    supabase
+      .from("reading_sessions")
+      .select("id, started_at, papers(title, slug)")
+      .is("ended_at", null)
+      .maybeSingle(),
+    supabase
+      .from("reading_sessions")
+      .select("continue_md, ended_at, papers(title, slug)")
+      .not("ended_at", "is", null)
+      .not("continue_md", "is", null)
+      .order("ended_at", { ascending: false })
+      .limit(3),
     supabase
       .from("papers")
       .select("title, slug, reading_status, last_read_at")
@@ -87,11 +102,12 @@ export default async function DashboardPage() {
       .order("updated_at", { ascending: false })
       .limit(6),
     supabase
-      .from("paper_notes")
+      .from("paper_annotations")
       .select("body_md, papers(title, slug)")
-      .eq("section_type", "open_questions")
-      .order("updated_at", { ascending: false })
-      .limit(12),
+      .eq("kind", "question")
+      .eq("resolved", false)
+      .order("created_at", { ascending: false })
+      .limit(5),
     supabase
       .from("misconception_corrections")
       .select("id, initial_belief_md, corrected_understanding_md, corrected_on")
@@ -127,15 +143,11 @@ export default async function DashboardPage() {
   ]);
 
   const openQuestions = (openQuestionsRes.data ?? [])
-    .filter((n) => hasRealContent(n.body_md))
-    .slice(0, 5)
     .map((n) => ({
       paper: n.papers as unknown as { title: string; slug: string } | null,
       preview: n.body_md
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith("#"))[0]
-        ?.replace(/^[-*]\s*/, "")
+        .replace(/[#*`>]/g, "")
+        .trim()
         .slice(0, 120),
     }))
     .filter((q) => q.paper);
@@ -143,6 +155,23 @@ export default async function DashboardPage() {
   const gapTopics = (gapTopicsRes.data ?? []).filter((t) => hasRealContent(t.knowledge_gaps_md));
   const papersReadThisWeek = new Set((weekSessionsRes.data ?? []).map((s) => s.paper_id)).size;
   const sessionCount = (weekSessionsRes.data ?? []).length;
+
+  const activeSession = activeSessionRes.data
+    ? {
+        startedAt: activeSessionRes.data.started_at,
+        paper: activeSessionRes.data.papers as unknown as { title: string; slug: string } | null,
+      }
+    : null;
+
+  const continueHints = (continueHintsRes.data ?? [])
+    .map((s) => ({
+      hint: (s.continue_md ?? "")
+        .replace(/[#*`>]/g, "")
+        .trim()
+        .slice(0, 120),
+      paper: s.papers as unknown as { title: string; slug: string } | null,
+    }))
+    .filter((h) => h.paper && h.hint);
 
   return (
     <div className="space-y-4">
@@ -166,25 +195,60 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {activeSession?.paper ? (
+        <Card className="border-emerald-500/40 py-3">
+          <CardContent className="flex items-center gap-3 px-4">
+            <Timer className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Reading session in progress</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {activeSession.paper.title} — started{" "}
+                {new Date(activeSession.startedAt ?? "").toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+            <Button asChild size="sm" className="ml-auto shrink-0">
+              <Link href={`/papers/${activeSession.paper.slug}/read`}>Resume</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <SectionCard title="Continue reading" icon={BookOpen}>
-          {(continueReadingRes.data ?? []).length === 0 ? (
-            <Empty>No reading sessions logged yet — open a paper and log one.</Empty>
+          {continueHints.length === 0 && (continueReadingRes.data ?? []).length === 0 ? (
+            <Empty>No reading sessions yet — open a paper and press Read.</Empty>
           ) : (
-            <ul className="space-y-1.5">
-              {(continueReadingRes.data ?? []).map((p) => (
-                <li key={p.slug} className="flex items-center gap-2 text-sm">
+            <ul className="space-y-2">
+              {continueHints.map((h, i) => (
+                <li key={`hint-${i}`} className="text-sm">
                   <Link
-                    href={`/papers/${p.slug}`}
-                    className="min-w-0 truncate hover:underline underline-offset-4"
+                    href={`/papers/${h.paper!.slug}/read`}
+                    className="hover:underline underline-offset-4"
                   >
-                    {p.title}
+                    {h.paper!.title}
                   </Link>
-                  <span className="ml-auto shrink-0">
-                    <ReadingStatusBadge status={p.reading_status} />
-                  </span>
+                  <p className="text-xs text-muted-foreground line-clamp-1">next: {h.hint}</p>
                 </li>
               ))}
+              {(continueReadingRes.data ?? [])
+                .filter((p) => !continueHints.some((h) => h.paper?.slug === p.slug))
+                .slice(0, Math.max(0, 3 - continueHints.length))
+                .map((p) => (
+                  <li key={p.slug} className="flex items-center gap-2 text-sm">
+                    <Link
+                      href={`/papers/${p.slug}/read`}
+                      className="min-w-0 truncate hover:underline underline-offset-4"
+                    >
+                      {p.title}
+                    </Link>
+                    <span className="ml-auto shrink-0">
+                      <ReadingStatusBadge status={p.reading_status} />
+                    </span>
+                  </li>
+                ))}
             </ul>
           )}
         </SectionCard>
@@ -267,7 +331,7 @@ export default async function DashboardPage() {
                 <li key={i} className="text-sm">
                   <p className="text-muted-foreground line-clamp-2">{q.preview}</p>
                   <Link
-                    href={`/papers/${q.paper!.slug}#section-open_questions`}
+                    href={`/papers/${q.paper!.slug}/read`}
                     className="text-xs hover:underline underline-offset-4"
                   >
                     {q.paper!.title}

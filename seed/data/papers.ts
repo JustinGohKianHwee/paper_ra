@@ -15,7 +15,7 @@ import type { PaperSeed, RelationSeed } from "@/seed/data/types";
  */
 
 const GUIDE = "llm_recsys_tiktok_shop_deep_study_guide.pdf";
-const REPORT = "Latest LLM Research for TikTok Shop Recommendation Engineering.pdf";
+const REPORT = "Latest LLM Research for a content-commerce platform Recommendation Engineering.pdf";
 
 // ---------------------------------------------------------------------------
 // Foundational sequential recommendation (metadata only — read the originals)
@@ -32,8 +32,7 @@ const foundational: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "metadata_only",
     priority: 3,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${REPORT} (named as living foundation); metadata from public record`,
     topics: ["sequential-recommendation"],
@@ -41,7 +40,7 @@ const foundational: PaperSeed[] = [
     sections: {
       summary:
         "Foundational self-attention model for next-item prediction. The study guides treat it as the baseline that long-history papers (LONGER, HSTU) extend.\n\nTODO: write a real summary after reading the paper.",
-      tiktok_relevance:
+      relevance_to_me:
         "Baseline architecture for any sequential-recommendation experiment; the guide's LONGER toy experiment explicitly extends a SASRec/BST repo.",
     },
     sources: [
@@ -64,8 +63,7 @@ const foundational: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "metadata_only",
     priority: 3,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${REPORT}, pretraining trends section (p. 7): "BERT4Rec remains the masked-item baseline"`,
     topics: ["sequential-recommendation", "data-quality-pretraining"],
@@ -93,10 +91,9 @@ const foundational: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "metadata_only",
     priority: 3,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 3,
-    note_source: "Metadata from public record; named in the user's bootcamp roadmap",
+    note_source: "Metadata from public record",
     topics: ["sequential-recommendation", "ranking-architecture"],
     concepts: [],
     sections: {
@@ -115,11 +112,11 @@ const foundational: PaperSeed[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// OneTrans — highest team relevance; strong EMPTY template (fill manually)
+// OneTrans — highest personal relevance; strong EMPTY template (fill manually)
 // ---------------------------------------------------------------------------
 
 const TODO_ONETRANS =
-  "TODO: complete from memory of your internship work and the primary paper. The seed guides contain no OneTrans material, so nothing has been pre-filled — do not trust any generated content here.";
+  "TODO: complete from your own prior work with this paper and from the primary source. The seed guides contain no OneTrans material, so nothing has been pre-filled — do not trust any generated content here.";
 
 const oneTrans: PaperSeed = {
   title: "OneTrans",
@@ -130,12 +127,11 @@ const oneTrans: PaperSeed = {
   reading_status: "revisit",
   verification_status: "metadata_only",
   priority: 5,
-  tiktok_shop_relevance: 5,
-  team_relevance: 5,
+  relevance: 5,
   production_relevance: 4,
   needs_revisit: true,
   note_source:
-    "No source-guide coverage. You researched and adapted this work during your internship — write these notes yourself.",
+    "No source-guide coverage. You have prior hands-on experience with this work — write these notes yourself.",
   topics: ["sequential-recommendation", "ranking-architecture", "long-user-history"],
   concepts: [],
   sections: {
@@ -151,8 +147,8 @@ const oneTrans: PaperSeed = {
     production_evidence: TODO_ONETRANS,
     serving: TODO_ONETRANS,
     failure_modes: TODO_ONETRANS,
-    tiktok_relevance:
-      "Highest team relevance in this library — you previously researched and adapted OneTrans during your internship.\n\n" +
+    relevance_to_me:
+      "Highest personal relevance in this library — you have previously researched and adapted OneTrans.\n\n" +
       "Reminder: record only public-paper information and your own personal-repo work here. No internal metrics, code, or architecture details.",
     implementation_mapping: TODO_ONETRANS,
     misconceptions: TODO_ONETRANS,
@@ -185,8 +181,7 @@ const longHistory: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 5,
-    tiktok_shop_relevance: 5,
-    team_relevance: 5,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Guide/report: consistent offline and online gains in ByteDance advertising and e-commerce; full deployment in 10+ scenarios at billion-user scale (needs primary verification).",
@@ -227,8 +222,8 @@ const longHistory: PaperSeed[] = [
         "- Sloppy sequence construction can leak future behaviour through time splits.",
       segment_risks:
         "Online benefit can vary by segment: heavy users may benefit far more than sparse users. Report sparse/medium/heavy buckets, not averages.",
-      tiktok_relevance:
-        "Long histories at TikTok Shop span watch behaviour, product clicks, searches, carts, purchases, refunds, comments, live-room interactions, follows. Model durable preference separately from the short-term purchase mission. When a fork loses uAUC, inspect long-history representation, recency bias, padding/masking, truncation.",
+      relevance_to_me:
+        "Long histories on a content-commerce platform span watch behaviour, product clicks, searches, carts, purchases, refunds, comments, live-room interactions, follows. Model durable preference separately from the short-term purchase mission. When a fork loses uAUC, inspect long-history representation, recency bias, padding/masking, truncation.",
       experiment_proposal:
         "## Hypothesis\nCompressed older history + full-attention recent window beats recent-only and naive full attention on quality-per-cost.\n\n## Baseline\nRecent-only SASRec; full-history SASRec truncated to max_len.\n\n## Treatment\nCompressed-history SASRec: recent window full attention + older history pooled/merged tokens + global summary token.\n\n## Metrics\nAUC/uAUC, NDCG@K, Recall@K, GPU memory, tokens/sec, p95 latency; segments by sequence length.\n\n## Ablations\nWindow sizes 50 / 200 / 1000 events; quality-vs-memory curves.\n\n## Failure cases to inspect\nGains only for heavy users; older history improving purchases but hurting current-session intent; padding/causal-mask bugs faking long-history gains.",
       misconceptions:
@@ -266,8 +261,7 @@ const longHistory: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 5,
-    team_relevance: 4,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Guide/report: offline + online superiority; fully deployed in Douyin E-Commerce Search serving millions of users daily (needs primary verification).",
@@ -293,8 +287,8 @@ const longHistory: PaperSeed[] = [
         "- Stale memory, especially after a purchase satisfies an intent.\n- Retrieval can reinforce popularity or cluster users too coarsely.\n- Privacy, storage, and freshness constraints in production.",
       segment_risks:
         "Memory should help sparse users (fills weak current-session signal) and heavy users differently — segment by history length; watch for reduced discovery from over-amplified dominant categories.",
-      tiktok_relevance:
-        "Persistent memory of brands, sizes, categories, budget, purchase cycles, seller preferences maps directly to TikTok Shop search/feed. When uAUC drops after a change, check whether memory features or sequence windows changed.",
+      relevance_to_me:
+        "Persistent memory of brands, sizes, categories, budget, purchase cycles, seller preferences maps directly to e-commerce search/feed surfaces. When uAUC drops after a change, check whether memory features or sequence windows changed.",
       experiment_proposal:
         "## Hypothesis\nA persistent interest memory helps sparse users and repeat-purchase categories most.\n\n## Baseline\nSequence ranker without memory features.\n\n## Treatment\nuser_memory table of EMA embeddings by category/brand/price/action, fed as features.\n\n## Metrics\nAUC/uAUC by user-history-length segment; repeat-purchase categories.\n\n## Ablations\nMemory aging (decay of old purchases; refund-driven trust decay).\n\n## Failure cases to inspect\nRecommending an already-bought category; memory reducing discovery.",
       misconceptions:
@@ -324,8 +318,7 @@ const longHistory: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 14 (pp. 29–30); ${REPORT} (p. 5)`,
     topics: ["long-user-history", "data-quality-pretraining"],
@@ -343,7 +336,7 @@ const longHistory: PaperSeed[] = [
         "Reported (per guide; needs primary verification): extends context windows while maintaining competitive standard-benchmark performance.",
       failure_modes:
         "- Longer context hurts if the model attends to distractors.\n- Must test position sensitivity (use a relevant event at position 900, not just recent ones).\n- Cost: compression/caching usually still necessary.",
-      tiktok_relevance:
+      relevance_to_me:
         "Directly informs sequence-length curriculum for user histories: variable-length training, retrieval stress tests, recency-vs-durability ablations; long-history models must not degrade sparse/new users.",
       experiment_proposal:
         "## Hypothesis\nProgressive length curriculum beats fixed short or fixed max-length training for long-history recommendation.\n\n## Baseline\nFixed short context; random crop.\n\n## Treatment\nProgressive longer context; compressed memory variant.\n\n## Metrics\nNeedle-in-user-history retrieval accuracy by position; uAUC by sequence length; NDCG@K; memory/latency.\n\n## Ablations\nRandom vs recency-biased crops.\n\n## Failure cases to inspect\nHeavy-user gains masking sparse-user/cold-start losses.",
@@ -377,8 +370,7 @@ const generative: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 5,
-    tiktok_shop_relevance: 4,
-    team_relevance: 4,
+    relevance: 4,
     production_relevance: 5,
     production_evidence:
       "Report: deployed in Kuaishou's main recommendation scene with a 1.6% watch-time uplift (needs primary verification).",
@@ -400,8 +392,8 @@ const generative: PaperSeed[] = [
         "Reported (per report; needs primary verification): +1.6% watch-time in Kuaishou's main scene — material for a production system.",
       failure_modes:
         "- Generation latency and beam complexity vs strict serving budgets.\n- Catalog updates: new items need semantic IDs and model awareness.\n- Can hallucinate invalid/unavailable item IDs unless constrained.\n- Slates need business constraints (diversity, trust, merchant exposure).",
-      tiktok_relevance:
-        "Watch-time uplift on short video is a strong analogy but not e-commerce: TikTok Shop needs GMV/CVR/trust objectives. Near term, most useful as a retrieval stage or candidate generator, not a full rank/rerank replacement.",
+      relevance_to_me:
+        "Watch-time uplift on short video is a strong analogy but not e-commerce: commerce platforms need GMV/CVR/trust objectives. Near term, most useful as a retrieval stage or candidate generator, not a full rank/rerank replacement.",
       experiment_proposal:
         "## Hypothesis\nSemantic-ID generation beats two-tower retrieval on long-tail coverage at acceptable latency.\n\n## Baseline\nTwo-tower retrieval; popularity retrieval.\n\n## Treatment\nToy sequence→semantic-ID generator over category/brand/price/popularity buckets.\n\n## Metrics\nRecall@K, NDCG, long-tail coverage, invalid-ID rate, latency.\n\n## Ablations\nOutcome conditioning: clicks vs purchases vs GMV.\n\n## Failure cases to inspect\nInvalid/out-of-stock generations; semantic collapse reducing diversity.",
       boss_explanation:
@@ -428,8 +420,7 @@ const generative: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 4,
+    relevance: 4,
     production_relevance: 5,
     production_evidence:
       "Report: up to 12.4% online metric improvement on a large platform with billions of users (needs primary verification).",
@@ -447,7 +438,7 @@ const generative: PaperSeed[] = [
         "Reported (per guide/report; needs primary verification): large offline NDCG gains, substantial long-sequence speedups, online deployment across multiple surfaces, up to 12.4% online improvement.",
       failure_modes:
         "Same family risks as OneRec/PinRec: serving latency of generation, catalog updates, invalid generations, business constraints on slates.",
-      tiktok_relevance:
+      relevance_to_me:
         "The 'alternating item-action tokens' framing transfers directly to mixed video/search/cart/purchase histories.",
       experiment_proposal:
         "## Hypothesis\nAction-conditioned token sequences beat item-only sequences.\n\n## Baseline\nStandard SASRec item-only sequence.\n\n## Treatment\nFlattened alternating item-action tokens.\n\n## Metrics\nNDCG@K, Recall@K, per-action-type performance.\n\n## Ablations\nAction vocabulary granularity.\n\n## Failure cases to inspect\nAction tokens diluting sequence length budget for sparse users.",
@@ -475,8 +466,7 @@ const generative: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 4,
     production_evidence:
       "Report: sitewide positive impact including higher clicks and search saves (needs primary verification).",
@@ -494,8 +484,8 @@ const generative: PaperSeed[] = [
         "Reported (per report; needs primary verification): sitewide gains in clicks/search-saves with explicit attention to serving efficiency.",
       failure_modes:
         "Outcome conditioning may merely shift popularity or price bias; check whether the knob changes *what* is retrieved or just re-weights the same head candidates.",
-      tiktok_relevance:
-        "Outcome conditioning maps to click vs purchase vs GMV steering for TikTok Shop retrieval — precision/diversity trade-offs per objective.",
+      relevance_to_me:
+        "Outcome conditioning maps to click vs purchase vs GMV steering for commerce retrieval — precision/diversity trade-offs per objective.",
       boss_explanation:
         "PinRec shows generative retrieval working sitewide in production, with a practical twist: condition generation on the business outcome you want.",
       sources_to_verify: "- Sitewide click/search-save gains — verify in paper.",
@@ -525,17 +515,16 @@ const llmIntent: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 5,
-    tiktok_shop_relevance: 5,
-    team_relevance: 5,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Report: ~400× inference acceleration and +3.446% GMV in Kuaishou e-commerce cross-domain recommendation A/B (needs primary verification; brand-new preprint).",
     note_source: `${GUIDE}, ch. 12 (pp. 25–26); ${REPORT} (pp. 3, 8)`,
-    topics: ["content-to-commerce-intent", "llm-enhanced-recommendation", "cold-start"],
+    topics: ["intent-modelling", "llm-enhanced-recommendation", "cold-start"],
     concepts: ["offline-llm-intent-mining"],
     sections: {
       summary:
-        "The most directly TikTok-Shop-like paper in the set: cross-domain content-to-commerce recommendation that pushes expensive LLM semantics offline (atomic intent representations) and composes them cheaply online.",
+        "The most directly content-to-commerce paper in the set: cross-domain content-to-commerce recommendation that pushes expensive LLM semantics offline (atomic intent representations) and composes them cheaply online.",
       thesis:
         "Mine atomic intents offline with LLMs, retrieve and compose them online — semantic quality without online LLM latency.",
       problem:
@@ -548,8 +537,8 @@ const llmIntent: PaperSeed[] = [
         "Reported (per guide/report; needs primary verification): public-dataset SOTA; large-scale Kuaishou e-commerce A/B; ~400× inference acceleration; +3.446% GMV.",
       failure_modes:
         "- Intents can be wrong, stale, culturally biased, or too generic.\n- Offline intent features need freshness management — a mission can change within minutes.\n- Brand-new preprint, not yet peer-reviewed.",
-      tiktok_relevance:
-        "This *is* the TikTok Shop problem shape: translate video consumption into product intent. Intent features can support retrieval, ranking, cold-start mapping, tagging, seller tools, and evaluation.",
+      relevance_to_me:
+        "This *is* the content-to-commerce problem shape: translate video consumption into product intent. Intent features can support retrieval, ranking, cold-start mapping, tagging, seller tools, and evaluation.",
       experiment_proposal:
         "## Hypothesis\nOffline-mined intent tags improve cross-domain cold-start ranking.\n\n## Baseline\nRanker without intent features.\n\n## Treatment\nRule-based/small-model 'LLM surrogate' maps content behaviour to atomic intents (category, use-case, budget, urgency, trust sensitivity) used as features.\n\n## Metrics\nCross-domain AUC/uAUC, GMV-weighted NDCG, intent coverage, latency.\n\n## Ablations\nIntent freshness/refresh policies under intent shift.\n\n## Failure cases to inspect\nMissing intent coverage by category/language; filter-bubble reinforcement; calibration damage.",
       boss_explanation:
@@ -576,13 +565,12 @@ const llmIntent: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 4,
-    team_relevance: 3,
+    relevance: 4,
     production_relevance: 4,
     production_evidence:
       "Guide: reports full deployment on Taobao with online improvements across users, merchants, platform outcomes (needs primary verification).",
     note_source: `${GUIDE}, ch. 12 (pp. 25–26)`,
-    topics: ["llm-enhanced-recommendation", "content-to-commerce-intent"],
+    topics: ["llm-enhanced-recommendation", "intent-modelling"],
     concepts: ["offline-llm-intent-mining"],
     sections: {
       summary:
@@ -591,7 +579,7 @@ const llmIntent: PaperSeed[] = [
         "Reported (per guide; needs primary verification): full Taobao deployment with online improvements across users, merchants, and platform outcomes.",
       failure_modes:
         "Agent-based systems are harder to debug than deterministic feature pipelines; intent explanations don't guarantee calibrated CTR/CVR.",
-      tiktok_relevance:
+      relevance_to_me:
         "Template for intent-centric e-commerce recommendation at a Taobao-scale platform; boss-facing narrative: LLMs as semantic feature generators and judges, not online rankers.",
       boss_explanation:
         "RecGPT is Alibaba's production case for intent-centric recommendation: LLMs mine interests and judge quality offline while the fast stack serves.",
@@ -616,12 +604,11 @@ const llmIntent: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 4,
-    team_relevance: 3,
+    relevance: 4,
     production_relevance: 4,
     needs_revisit: true,
     note_source: `${GUIDE}, ch. 12 (pp. 25–26). Caution: the report (p. 5) could not verify strong primary-source anchors for RecGPT-V2 — verify the official report before trusting details.`,
-    topics: ["llm-enhanced-recommendation", "content-to-commerce-intent"],
+    topics: ["llm-enhanced-recommendation", "intent-modelling"],
     concepts: ["offline-llm-intent-mining"],
     sections: {
       summary:
@@ -652,12 +639,11 @@ const llmIntent: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 2,
-    tiktok_shop_relevance: 3,
-    team_relevance: 2,
+    relevance: 3,
     production_relevance: 3,
     needs_revisit: true,
     note_source: `${GUIDE}, ch. 12 (pp. 25–26). Same primary-source caution as RecGPT-V2.`,
-    topics: ["llm-enhanced-recommendation", "content-to-commerce-intent"],
+    topics: ["llm-enhanced-recommendation", "intent-modelling"],
     concepts: ["offline-llm-intent-mining"],
     sections: {
       summary:
@@ -688,8 +674,7 @@ const llmIntent: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 4,
-    team_relevance: 3,
+    relevance: 4,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 13 (pp. 27–28)`,
     topics: ["llm-enhanced-recommendation", "cold-start"],
@@ -701,7 +686,7 @@ const llmIntent: PaperSeed[] = [
         "Reported (per guide; needs primary verification): up to 43% HitRatio@1 improvement over zero-shot LLM recommender settings; stronger under cold-start items.",
       failure_modes:
         "Co-purchase is not always substitutable preference (complements vs substitutes behave differently); HitRatio gains may not translate to GMV for low-margin/out-of-stock/low-trust items.",
-      tiktok_relevance:
+      relevance_to_me:
         "Maps to product-to-product retrieval: similar products, complements, bundles, post-purchase recommendations — new products, new sellers, cross-border SKUs.",
       boss_explanation:
         "ItemRAG shows a low-risk LLM role: give the LLM an item-graph context (co-purchases + semantics) to fix cold-start retrieval, no ranking-stack surgery required.",
@@ -726,8 +711,7 @@ const llmIntent: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 4,
-    team_relevance: 3,
+    relevance: 4,
     production_relevance: 4,
     production_evidence:
       "Guide: deployment on a large-scale cross-border e-commerce platform with recall-number and GMV gains (needs primary verification).",
@@ -743,7 +727,7 @@ const llmIntent: PaperSeed[] = [
         "Reported (per guide; needs primary verification): industry + academic evaluations; deployed on a cross-border e-commerce platform with recall and GMV gains.",
       failure_modes:
         "Synthetic interactions can amplify stereotypes, popularity, or wrong complements; check synthetic-data precision manually — false positives poison long-tail models.",
-      tiktok_relevance:
+      relevance_to_me:
         "LLM-as-data-refiner is safer than LLM-as-online-ranker for high-QPS systems; directly applicable to long-tail product discovery and cross-border SKUs.",
       boss_explanation:
         "LLM-I2I: use LLMs to generate and filter training data for long-tail items, then serve a cheap item-to-item model — a production-safe LLM pattern with claimed GMV evidence.",
@@ -775,8 +759,7 @@ const multimodal: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 5,
-    team_relevance: 4,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Guide/report: deployed in Douyin Search with +0.81% QAUC and reduced query-change-rate decay; offline gains in Douyin Ads (needs primary verification).",
@@ -800,8 +783,8 @@ const multimodal: PaperSeed[] = [
         "- End-to-end multimodal training is expensive and operationally hard.\n- Visual features learn spurious shortcuts (background, lighting, creator style) rather than product value.\n- Cold-start gains may not hold for misleading images or poor seller trust.",
       segment_risks:
         "Check whether multimodal features help new items but hurt mature items; inspect cold-start/new-product segments separately.",
-      tiktok_relevance:
-        "TikTok Shop is multimodal by default: users buy after watching videos, reading comments, seeing product cards, evaluating creators/sellers. The chain to model: video demonstration → product attributes → user intent → conversion probability.",
+      relevance_to_me:
+        "Content-commerce platforms are multimodal by default: users buy after watching videos, reading comments, seeing product cards, evaluating creators/sellers. The chain to model: video demonstration → product attributes → user intent → conversion probability.",
       experiment_proposal:
         "## Hypothesis\nJointly trained multimodal projections beat frozen embeddings on cold-start items.\n\n## Baseline\nID-only ranker; frozen multimodal embedding ranker.\n\n## Treatment\nJointly trained multimodal projection with the recommendation loss.\n\n## Metrics\nCold-start AUC/uAUC, NDCG@K, long-tail recall, ECE by item age.\n\n## Ablations\nPer-modality contribution (text/image/video-caption).\n\n## Failure cases to inspect\nAppearance overweighted vs seller trust/refund risk; train/serve feature availability online.",
       boss_explanation:
@@ -827,8 +810,7 @@ const multimodal: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 2,
-    tiktok_shop_relevance: 2,
-    team_relevance: 2,
+    relevance: 2,
     production_relevance: 1,
     note_source: `${GUIDE}, ch. 10 (pp. 21–22); ${REPORT} (p. 5, Tier Two)`,
     topics: ["multimodal-recommendation", "gpu-efficiency", "serving-and-caching"],
@@ -836,7 +818,7 @@ const multimodal: PaperSeed[] = [
     sections: {
       summary:
         "Not a recommender paper: an open small-to-mid multimodal, multilingual, long-context model family. Relevant for local/global attention choices that limit KV-cache memory growth at long context — serving-efficient multimodal design.",
-      tiktok_relevance:
+      relevance_to_me:
         "Reference for lightweight multimodal encoders and KV-cache-aware architecture when considering nearline multimodal features; multilingual capability matters for SEA markets.",
       boss_explanation:
         "Gemma 3 is the open reference for efficient multimodal/long-context model design — background reading, not an implementation guide for recsys.",
@@ -869,8 +851,7 @@ const rankingServing: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 4,
-    team_relevance: 5,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Guide/report: MFU 4.5% → 45%, ~100× parameter scale-up at roughly constant latency, online gains in Douyin feed (+0.3% active days, +1.08% app duration) (needs primary verification).",
@@ -892,8 +873,8 @@ const rankingServing: PaperSeed[] = [
         "Reported (per guide/report; needs primary verification): MFU 4.5% → 45%; 100× parameter scale-up at roughly constant inference latency; online A/B gains in Douyin feed ranking (+0.3% user active days, +1.08% app duration).",
       failure_modes:
         "- Bigger rankers can overfit logging bias/popularity.\n- Hardware efficiency can hide small-segment quality regressions.\n- Guardrails: feature freshness, calibration, business constraints, train/serve consistency.",
-      tiktok_relevance:
-        "TikTok Shop ranking needs rich feature crossing (user behaviour × product metadata × seller × price/promotion × content embeddings × context). Read AUC/uAUC, calibration, latency, and GPU utilisation together when debugging.",
+      relevance_to_me:
+        "Commerce ranking needs rich feature crossing (user behaviour × product metadata × seller × price/promotion × content embeddings × context). Read AUC/uAUC, calibration, latency, and GPU utilisation together when debugging.",
       experiment_proposal:
         "## Hypothesis\nA token-mixing block beats a concatenation MLP at matched latency.\n\n## Baseline\nMLP ranker; cross-network; mini-transformer.\n\n## Treatment\nTokenized feature ranker: each feature field an embedding token + token-mixing block before CTR/CVR heads.\n\n## Metrics\nuAUC, GMV-weighted NDCG, calibration, latency, parameter count, rough MFU proxy.\n\n## Ablations\nToken count / mixing depth.\n\n## Failure cases to inspect\nCold-start/long-tail/high-price/new-seller segments; overconfidence after richer interactions.",
       boss_explanation:
@@ -920,8 +901,7 @@ const rankingServing: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 4,
-    team_relevance: 5,
+    relevance: 5,
     production_relevance: 5,
     production_evidence:
       "Report: up to 20% latency reduction with stable online metrics across Douyin feed, ads, and other ByteDance scenarios (needs primary verification).",
@@ -941,7 +921,7 @@ const rankingServing: PaperSeed[] = [
         "Reported (per report; needs primary verification): up to 20% latency reduction without hurting online metrics.",
       failure_modes:
         "- Too much interaction moved out of the candidate path loses fine-grained matching.\n- Cached state goes stale after in-session clicks/searches/carts.\n- Train/serve mismatch: training computes fresh encodings, serving reuses cached ones.",
-      tiktok_relevance:
+      relevance_to_me:
         "User representations from watch/click/cart/purchase sequences are expensive; reuse across candidate products is natural. When offline wins fail online, check whether serving approximates something offline computed exactly.",
       experiment_proposal:
         "## Hypothesis\nCached user encodings preserve ranking quality at large latency savings until staleness bites.\n\n## Baseline\nPairwise ranker encoding user sequence per user-item pair.\n\n## Treatment\nSeparated ranker: encode user once, score N items.\n\n## Metrics\nScore correlation, top-K overlap, uAUC/NDCG, latency/memory at N=100/500/1000.\n\n## Ablations\nCache refresh policies under mid-session behaviour updates.\n\n## Failure cases to inspect\nFast-changing sessions; long-tail items losing item-specific interaction capacity.",
@@ -969,8 +949,7 @@ const rankingServing: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 5,
-    tiktok_shop_relevance: 3,
-    team_relevance: 4,
+    relevance: 4,
     production_relevance: 5,
     production_evidence:
       "Very widely adopted serving system; guide reports 2–4× throughput improvement at similar latency vs prior systems in evaluated settings (needs primary verification).",
@@ -990,7 +969,7 @@ const rankingServing: PaperSeed[] = [
         "Reported (per guide; needs primary verification): 2–4× throughput improvement at similar latency vs prior serving systems in evaluated settings; extremely broad adoption.",
       failure_modes:
         "Systems wins are workload-specific: request-length distribution changes everything. Serving throughput ≠ downstream ranking quality.",
-      tiktok_relevance:
+      relevance_to_me:
         "Table stakes for any LLM-assisted seller tool, shopping assistant, or offline labelling pipeline; the recsys analogue of the bottleneck is feature lookup, embedding tables, user-side recomputation, candidate fanout.",
       experiment_proposal:
         "## Hypothesis\nPaged allocation materially beats naive batching on throughput-per-GPU-dollar for a toy assistant/reranker service.\n\n## Baseline\nNaive contiguous allocation batching simulator.\n\n## Treatment\nBlock/paged allocation with variable request lengths.\n\n## Metrics\np50/p95 latency, throughput, memory ceiling, degradation when context doubles.\n\n## Ablations\nRequest-length distributions.\n\n## Failure cases to inspect\nPrefill vs decode timing conflated; mean throughput hiding p99.",
@@ -1017,8 +996,7 @@ const rankingServing: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 2,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 4,
     note_source: `${GUIDE}, ch. 5 (pp. 11–12); ${REPORT} (p. 3)`,
     topics: ["serving-and-caching", "gpu-efficiency"],
@@ -1030,7 +1008,7 @@ const rankingServing: PaperSeed[] = [
         "Reported (per guide; needs primary verification): large inter-token latency reductions and long-context/parallel-generation improvements; integration into vLLM/SGLang/MLC-style stacks.",
       failure_modes:
         "Exact gains depend heavily on hardware, model, prompt lengths, batch mix, kernel backend — benchmark end-to-end latency, not kernel speed.",
-      tiktok_relevance:
+      relevance_to_me:
         "Determines whether long-context inference is affordable for LLM-judge pipelines, seller copilots, long-history intent analysers.",
       boss_explanation:
         "FlashInfer shows kernels and scheduling decide whether long-context serving is economical — measure end-to-end, not kernel microbenchmarks.",
@@ -1062,8 +1040,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 1 (pp. 3–4); ${REPORT} (p. 2)`,
     topics: ["data-quality-pretraining", "gpu-efficiency"],
@@ -1081,7 +1058,7 @@ const pretrainingPost: PaperSeed[] = [
         "Broad first-party benchmark coverage across reasoning/coding/multilingual/agent tasks — treat as evidence of controllable compute, not of recsys transfer.",
       failure_modes:
         "Thinking mode raises latency/cost — unacceptable for every recsys request; benchmark ability ≠ calibrated probabilities or ranking gains.",
-      tiktok_relevance:
+      relevance_to_me:
         "Cascade thinking: retrieval → rank → rerank → optional expensive semantic rerank for ambiguous/high-value/high-risk traffic slices only. Use expensive LLM inference offline (annotation, intent clusters, eval labels), cheap students online.",
       experiment_proposal:
         "## Hypothesis\nUncertainty-triggered expensive reranking beats always-cheap and always-expensive at matched cost.\n\n## Baseline\nAlways cheap; always expensive.\n\n## Treatment\nBudget-aware reranker: expensive scorer only for high-uncertainty or high-GMV candidates.\n\n## Metrics\nNDCG@K, AUC/uAUC, ECE, latency-per-request, escalation fraction.\n\n## Ablations\nUncertainty-triggered vs GMV-triggered escalation.\n\n## Failure cases to inspect\nSegment-level uAUC where escalation triggers; calibration damage; unstable triggers selecting noise.",
@@ -1109,8 +1086,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 2 (pp. 5–6); ${REPORT} (p. 2)`,
     topics: ["data-quality-pretraining", "gpu-efficiency", "ranking-architecture"],
@@ -1128,7 +1104,7 @@ const pretrainingPost: PaperSeed[] = [
         "Reported (per guide; needs primary verification): 671B total / 37B activated parameters, 14.8T pretraining tokens, competitive performance at much lower training cost than dense expectations.",
       failure_modes:
         "MoE is operationally complex: routing imbalance, undertrained experts, communication overhead, train/serve mismatch; expert specialisation can overfit historical exposure; sparse wins can hide small-segment losses.",
-      tiktok_relevance:
+      relevance_to_me:
         "MoE ranker routing by category/price band/country/seller type/user lifecycle/intent state; expert towers sharing an embedding space for retrieval; MLA lessons for long-history encoders.",
       boss_explanation:
         "DeepSeek-V3 is the reference for capacity-vs-compute separation: 671B parameters, 37B active — the pattern recsys can borrow as conditional capacity instead of bigger dense rankers.",
@@ -1154,8 +1130,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 2,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 3 (pp. 7–8); ${REPORT} (p. 2)`,
     topics: ["reward-optimisation", "calibration"],
@@ -1169,7 +1144,7 @@ const pretrainingPost: PaperSeed[] = [
         "Strong reasoning-benchmark evidence (per guide; needs primary verification); transfer to recommendation requires separate testing.",
       failure_modes:
         "Reasoning-benchmark gains are not recommender gains; reward models go stale as catalog/behaviour shifts; RL can damage calibration (see DCPO).",
-      tiktok_relevance:
+      relevance_to_me:
         "Post-training as an optimisation layer for seller tools, query understanding, and evaluation; RLVR maps to verifiable but delayed/biased commerce rewards (purchase, refund, compliance).",
       experiment_proposal:
         "## Hypothesis\nA tiny policy reranker on synthetic rewards (CTR proxy + diversity + margin confidence) beats plain supervised reranking.\n\n## Baseline\nSupervised BCE reranker.\n\n## Treatment\nPolicy reranker trained on the composite reward.\n\n## Metrics\nAUC/uAUC, NDCG@K, ECE, reward decomposition.\n\n## Ablations\nReward-term weights.\n\n## Failure cases to inspect\nReward hacking; calibration damage; exposure-bias exploitation.",
@@ -1197,8 +1172,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 4,
-    tiktok_shop_relevance: 3,
-    team_relevance: 4,
+    relevance: 4,
     production_relevance: 3,
     note_source: `${GUIDE}, ch. 4 (pp. 9–10); ${REPORT} (pp. 1, 4)`,
     topics: ["data-quality-pretraining", "evaluation-and-experimentation"],
@@ -1216,7 +1190,7 @@ const pretrainingPost: PaperSeed[] = [
         "Reported (per guide; needs primary verification): model-based filtering is key to a strong open dataset; DCLM baseline beats previous open-data models with less compute.",
       failure_modes:
         "Filter models encode their own biases and can drop rare but valuable data; 'high quality for language' ≠ 'high quality for commerce'; mixture changes can shift calibration and segments while average AUC improves.",
-      tiktok_relevance:
+      relevance_to_me:
         "The recsys pretraining corpus is impressions/clicks/carts/purchases/refunds/searches/metadata — curation means event selection, action weighting, exposure dedup, bot/fraud filtering, and time-split leakage control. When a fork fails on backtest, inspect data before architecture.",
       experiment_proposal:
         "## Hypothesis\nA curated event mixture beats a naive log dump at equal compute.\n\n## Baseline\nNaive full-log training corpus.\n\n## Treatment\nFiltered + deduped + reweighted mixture of impressions/clicks/carts/purchases/refunds.\n\n## Metrics\nData efficiency (quality vs tokens), long-tail recall, calibration by action type.\n\n## Ablations\nPopularity-capped sampling; deliberate future-leakage canary (metrics should become suspiciously high).\n\n## Failure cases to inspect\nGains from popular items rather than personalisation; negative sampling silently changing the task.",
@@ -1243,8 +1217,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 2,
-    tiktok_shop_relevance: 2,
-    team_relevance: 2,
+    relevance: 2,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 3 (pp. 7–8)`,
     topics: ["reward-optimisation"],
@@ -1279,8 +1252,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 3 (pp. 7–8) + glossary (p. 34)`,
     topics: ["reward-optimisation", "calibration"],
@@ -1292,7 +1264,7 @@ const pretrainingPost: PaperSeed[] = [
         "Pairwise preferences are cheaper and cleaner than absolute labels; the reference term regularises against drifting into degenerate policies.",
       failure_modes:
         "Preference pairs biased by exposure/position ('clicked vs not-clicked' is not clean human preference); may optimise proxy preference over long-term value.",
-      tiktok_relevance:
+      relevance_to_me:
         "DPO-style losses inspire pairwise/slate reranking: prefer slate A over slate B from logged or synthetic preference signals. OneRec's Iterative Preference Alignment is the recsys-flavoured descendant.",
       experiment_proposal:
         "## Hypothesis\nA DPO-style reranker beats BCE and BPR baselines without destroying calibration.\n\n## Baseline\nSupervised BCE ranker; pairwise BPR.\n\n## Treatment\nTiny DPO reranker (preferred vs rejected item/slate + reference score).\n\n## Metrics\nAUC/uAUC, NDCG@K, ECE, GMV-weighted NDCG.\n\n## Ablations\nReference-policy strength.\n\n## Failure cases to inspect\nExposure-bias exploitation; offline pairwise wins from logging-policy artefacts.",
@@ -1319,8 +1291,7 @@ const pretrainingPost: PaperSeed[] = [
     reading_status: "to_read",
     verification_status: "secondary_summary_only",
     priority: 3,
-    tiktok_shop_relevance: 3,
-    team_relevance: 3,
+    relevance: 3,
     production_relevance: 2,
     note_source: `${GUIDE}, ch. 3 (pp. 7–8)`,
     topics: ["calibration", "reward-optimisation"],
@@ -1332,7 +1303,7 @@ const pretrainingPost: PaperSeed[] = [
         "Calibration matters because probabilities feed downstream arithmetic — an overconfident model can rank better while making GMV estimates worse.",
       failure_modes:
         "The recommendation analogue of overconfident wrong answers: pCTR/pCVR drift breaking bid/blend/threshold logic even as AUC improves.",
-      tiktok_relevance:
+      relevance_to_me:
         "Maps directly to calibration-aware ranking: never let a reward-optimised model become numerically overconfident. Debug rule: if AUC improves but ECE worsens, ranking got better while probability estimates got worse.",
       boss_explanation:
         "DCPO's warning: optimising harder objectives (RL, preference) silently taxes calibration — decouple and monitor both.",

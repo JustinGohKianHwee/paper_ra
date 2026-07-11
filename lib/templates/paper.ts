@@ -21,7 +21,7 @@ export type PaperSectionType =
   | "serving"
   | "failure_modes"
   | "segment_risks"
-  | "tiktok_relevance"
+  | "relevance_to_me"
   | "implementation_mapping"
   | "experiment_proposal"
   | "misconceptions"
@@ -120,9 +120,9 @@ export const PAPER_SECTIONS: readonly PaperSectionDef[] = [
     hint: "Sparse users, new items, fast-changing sessions — who could regress?",
   },
   {
-    type: "tiktok_relevance",
-    heading: "TikTok Shop relevance",
-    hint: "Public-information reasoning only. No internal metrics or systems.",
+    type: "relevance_to_me",
+    heading: "Why this matters to me",
+    hint: "Relevance to your role, projects, or research direction. Public-information reasoning only.",
   },
   {
     type: "implementation_mapping",
@@ -153,8 +153,8 @@ export const PAPER_SECTIONS: readonly PaperSectionDef[] = [
   },
   {
     type: "boss_explanation",
-    heading: "Boss-facing explanation",
-    hint: "Two or three plain sentences you could say in a hallway.",
+    heading: "Plain-language explanation",
+    hint: "Two or three sentences you could say to a non-specialist in a hallway.",
   },
   {
     type: "sources_to_verify",

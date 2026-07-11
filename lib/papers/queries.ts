@@ -10,12 +10,18 @@ type Client = SupabaseClient<Database>;
  * complicated join for clarity.
  */
 export async function fetchPaperLibrary(supabase: Client): Promise<PaperLibraryItem[]> {
-  const [papersRes, topicLinksRes, openQuestionRes, experimentLinksRes] = await Promise.all([
-    supabase.from("papers").select("*"),
-    supabase.from("paper_topics").select("paper_id, topics(name, slug)"),
-    supabase.from("paper_notes").select("paper_id, body_md").eq("section_type", "open_questions"),
-    supabase.from("experiment_papers").select("paper_id"),
-  ]);
+  const [papersRes, topicLinksRes, openQuestionRes, questionAnnotationsRes, experimentLinksRes] =
+    await Promise.all([
+      supabase.from("papers").select("*"),
+      supabase.from("paper_topics").select("paper_id, topics(name, slug)"),
+      supabase.from("paper_notes").select("paper_id, body_md").eq("section_type", "open_questions"),
+      supabase
+        .from("paper_annotations")
+        .select("paper_id")
+        .eq("kind", "question")
+        .eq("resolved", false),
+      supabase.from("experiment_papers").select("paper_id"),
+    ]);
 
   if (papersRes.error) throw new Error(`Failed to load papers: ${papersRes.error.message}`);
 
@@ -28,9 +34,12 @@ export async function fetchPaperLibrary(supabase: Client): Promise<PaperLibraryI
     topicsByPaper.set(link.paper_id, existing);
   }
 
-  const openQuestionPapers = new Set(
-    (openQuestionRes.data ?? []).filter((n) => hasRealContent(n.body_md)).map((n) => n.paper_id)
-  );
+  // Unresolved question annotations (reading flow) or a non-empty legacy
+  // open-questions section both count.
+  const openQuestionPapers = new Set([
+    ...(openQuestionRes.data ?? []).filter((n) => hasRealContent(n.body_md)).map((n) => n.paper_id),
+    ...(questionAnnotationsRes.data ?? []).map((a) => a.paper_id),
+  ]);
 
   const experimentCounts = new Map<string, number>();
   for (const link of experimentLinksRes.data ?? []) {

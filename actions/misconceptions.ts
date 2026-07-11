@@ -6,7 +6,7 @@ import type { ActionResult } from "@/actions/papers";
 import { createClient } from "@/lib/supabase/server";
 import { misconceptionCreateSchema, misconceptionUpdateSchema } from "@/lib/validation/schemas";
 
-export async function createMisconception(input: unknown): Promise<ActionResult> {
+async function insertMisconception(input: unknown): Promise<ActionResult> {
   const parsed = misconceptionCreateSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -24,7 +24,18 @@ export async function createMisconception(input: unknown): Promise<ActionResult>
 
   revalidatePath("/misconceptions");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function createMisconception(input: unknown): Promise<ActionResult> {
+  const result = await insertMisconception(input);
+  if (!result.ok) return result;
   redirect("/misconceptions");
+}
+
+/** Dialog-friendly variant (e.g. reading mode): no redirect on success. */
+export async function createMisconceptionInline(input: unknown): Promise<ActionResult> {
+  return insertMisconception(input);
 }
 
 export async function updateMisconception(input: unknown): Promise<ActionResult> {

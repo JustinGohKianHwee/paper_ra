@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NewSynthesisForm } from "@/app/(app)/synthesis/new/new-synthesis-form";
 import { PrivacyReminder } from "@/components/privacy-reminder";
+import { aiEnabled } from "@/lib/ai/client";
 
 export const metadata: Metadata = { title: "New synthesis note" };
 
@@ -14,7 +15,7 @@ export default function NewSynthesisPage() {
         </p>
       </div>
       <PrivacyReminder />
-      <NewSynthesisForm />
+      <NewSynthesisForm aiEnabled={aiEnabled()} />
     </div>
   );
 }

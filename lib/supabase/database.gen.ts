@@ -304,6 +304,63 @@ export type Database = {
           },
         ];
       };
+      paper_annotations: {
+        Row: {
+          body_md: string;
+          created_at: string;
+          fts: unknown;
+          id: string;
+          kind: Database["public"]["Enums"]["annotation_kind"];
+          paper_id: string;
+          passage_id: string | null;
+          resolved: boolean;
+          updated_at: string;
+          user_id: string;
+          visibility: Database["public"]["Enums"]["visibility"];
+        };
+        Insert: {
+          body_md: string;
+          created_at?: string;
+          fts?: unknown;
+          id?: string;
+          kind?: Database["public"]["Enums"]["annotation_kind"];
+          paper_id: string;
+          passage_id?: string | null;
+          resolved?: boolean;
+          updated_at?: string;
+          user_id: string;
+          visibility?: Database["public"]["Enums"]["visibility"];
+        };
+        Update: {
+          body_md?: string;
+          created_at?: string;
+          fts?: unknown;
+          id?: string;
+          kind?: Database["public"]["Enums"]["annotation_kind"];
+          paper_id?: string;
+          passage_id?: string | null;
+          resolved?: boolean;
+          updated_at?: string;
+          user_id?: string;
+          visibility?: Database["public"]["Enums"]["visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "paper_annotations_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "paper_annotations_passage_id_fkey";
+            columns: ["passage_id"];
+            isOneToOne: false;
+            referencedRelation: "paper_passages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       paper_concepts: {
         Row: {
           concept_id: string;
@@ -339,6 +396,7 @@ export type Database = {
       };
       paper_notes: {
         Row: {
+          authorship: Database["public"]["Enums"]["note_authorship"];
           body_md: string;
           created_at: string;
           fts: unknown;
@@ -351,6 +409,7 @@ export type Database = {
           visibility: Database["public"]["Enums"]["visibility"];
         };
         Insert: {
+          authorship?: Database["public"]["Enums"]["note_authorship"];
           body_md?: string;
           created_at?: string;
           fts?: unknown;
@@ -363,6 +422,7 @@ export type Database = {
           visibility?: Database["public"]["Enums"]["visibility"];
         };
         Update: {
+          authorship?: Database["public"]["Enums"]["note_authorship"];
           body_md?: string;
           created_at?: string;
           fts?: unknown;
@@ -377,6 +437,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "paper_notes_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      paper_passages: {
+        Row: {
+          ai_model: string | null;
+          ai_summary_md: string;
+          anchor: string | null;
+          created_at: string;
+          id: string;
+          page_end: number | null;
+          page_start: number | null;
+          paper_id: string;
+          position: number;
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          ai_model?: string | null;
+          ai_summary_md?: string;
+          anchor?: string | null;
+          created_at?: string;
+          id?: string;
+          page_end?: number | null;
+          page_start?: number | null;
+          paper_id: string;
+          position: number;
+          title: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          ai_model?: string | null;
+          ai_summary_md?: string;
+          anchor?: string | null;
+          created_at?: string;
+          id?: string;
+          page_end?: number | null;
+          page_start?: number | null;
+          paper_id?: string;
+          position?: number;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "paper_passages_paper_id_fkey";
             columns: ["paper_id"];
             isOneToOne: false;
             referencedRelation: "papers";
@@ -425,6 +538,60 @@ export type Database = {
             columns: ["to_paper_id"];
             isOneToOne: false;
             referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      paper_suggestions: {
+        Row: {
+          created_at: string;
+          decided_at: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["suggestion_kind"];
+          paper_id: string;
+          payload: Json;
+          run_id: string | null;
+          status: Database["public"]["Enums"]["suggestion_status"];
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          decided_at?: string | null;
+          id?: string;
+          kind: Database["public"]["Enums"]["suggestion_kind"];
+          paper_id: string;
+          payload: Json;
+          run_id?: string | null;
+          status?: Database["public"]["Enums"]["suggestion_status"];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          decided_at?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["suggestion_kind"];
+          paper_id?: string;
+          payload?: Json;
+          run_id?: string | null;
+          status?: Database["public"]["Enums"]["suggestion_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "paper_suggestions_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "paper_suggestions_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "processing_runs";
             referencedColumns: ["id"];
           },
         ];
@@ -479,13 +646,17 @@ export type Database = {
           pdf_url: string | null;
           primary_source_verified: boolean;
           priority: number;
+          processed_at: string | null;
+          processing_error: string | null;
+          processing_status: Database["public"]["Enums"]["processing_status"];
           production_evidence: string | null;
           production_relevance: number;
           reading_status: Database["public"]["Enums"]["reading_status"];
+          relevance: number;
+          relevance_note: string | null;
           slug: string;
+          source_input: string | null;
           subtitle: string | null;
-          team_relevance: number;
-          tiktok_shop_relevance: number;
           title: string;
           updated_at: string;
           user_id: string;
@@ -510,13 +681,17 @@ export type Database = {
           pdf_url?: string | null;
           primary_source_verified?: boolean;
           priority?: number;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: Database["public"]["Enums"]["processing_status"];
           production_evidence?: string | null;
           production_relevance?: number;
           reading_status?: Database["public"]["Enums"]["reading_status"];
+          relevance?: number;
+          relevance_note?: string | null;
           slug: string;
+          source_input?: string | null;
           subtitle?: string | null;
-          team_relevance?: number;
-          tiktok_shop_relevance?: number;
           title: string;
           updated_at?: string;
           user_id: string;
@@ -541,13 +716,17 @@ export type Database = {
           pdf_url?: string | null;
           primary_source_verified?: boolean;
           priority?: number;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: Database["public"]["Enums"]["processing_status"];
           production_evidence?: string | null;
           production_relevance?: number;
           reading_status?: Database["public"]["Enums"]["reading_status"];
+          relevance?: number;
+          relevance_note?: string | null;
           slug?: string;
+          source_input?: string | null;
           subtitle?: string | null;
-          team_relevance?: number;
-          tiktok_shop_relevance?: number;
           title?: string;
           updated_at?: string;
           user_id?: string;
@@ -557,6 +736,68 @@ export type Database = {
           year?: number | null;
         };
         Relationships: [];
+      };
+      processing_runs: {
+        Row: {
+          attempt: number;
+          created_at: string;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          model: string | null;
+          paper_id: string;
+          prompt_version: string | null;
+          stage: string | null;
+          stages_completed: string[];
+          started_at: string | null;
+          status: Database["public"]["Enums"]["run_status"];
+          updated_at: string;
+          usage: Json | null;
+          user_id: string;
+        };
+        Insert: {
+          attempt?: number;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          model?: string | null;
+          paper_id: string;
+          prompt_version?: string | null;
+          stage?: string | null;
+          stages_completed?: string[];
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["run_status"];
+          updated_at?: string;
+          usage?: Json | null;
+          user_id: string;
+        };
+        Update: {
+          attempt?: number;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          model?: string | null;
+          paper_id?: string;
+          prompt_version?: string | null;
+          stage?: string | null;
+          stages_completed?: string[];
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["run_status"];
+          updated_at?: string;
+          usage?: Json | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "processing_runs_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       radar_candidates: {
         Row: {
@@ -631,30 +872,42 @@ export type Database = {
       };
       reading_sessions: {
         Row: {
+          continue_md: string | null;
           created_at: string;
+          ended_at: string | null;
           id: string;
           minutes: number | null;
           note: string | null;
           occurred_on: string;
           paper_id: string;
+          started_at: string | null;
+          takeaway_md: string | null;
           user_id: string;
         };
         Insert: {
+          continue_md?: string | null;
           created_at?: string;
+          ended_at?: string | null;
           id?: string;
           minutes?: number | null;
           note?: string | null;
           occurred_on?: string;
           paper_id: string;
+          started_at?: string | null;
+          takeaway_md?: string | null;
           user_id: string;
         };
         Update: {
+          continue_md?: string | null;
           created_at?: string;
+          ended_at?: string | null;
           id?: string;
           minutes?: number | null;
           note?: string | null;
           occurred_on?: string;
           paper_id?: string;
+          started_at?: string | null;
+          takeaway_md?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -713,6 +966,8 @@ export type Database = {
       };
       synthesis_notes: {
         Row: {
+          ai_draft_md: string | null;
+          approved_at: string | null;
           body_md: string;
           created_at: string;
           fts: unknown;
@@ -725,6 +980,8 @@ export type Database = {
           visibility: Database["public"]["Enums"]["visibility"];
         };
         Insert: {
+          ai_draft_md?: string | null;
+          approved_at?: string | null;
           body_md?: string;
           created_at?: string;
           fts?: unknown;
@@ -737,6 +994,8 @@ export type Database = {
           visibility?: Database["public"]["Enums"]["visibility"];
         };
         Update: {
+          ai_draft_md?: string | null;
+          approved_at?: string | null;
           body_md?: string;
           created_at?: string;
           fts?: unknown;
@@ -811,8 +1070,10 @@ export type Database = {
       };
     };
     Enums: {
+      annotation_kind: "note" | "question" | "correction" | "idea";
       experiment_status:
         "proposed" | "implementing" | "running" | "analysing" | "completed" | "abandoned";
+      note_authorship: "human" | "ai" | "ai_edited";
       paper_section_type:
         | "summary"
         | "thesis"
@@ -830,7 +1091,7 @@ export type Database = {
         | "serving"
         | "failure_modes"
         | "segment_risks"
-        | "tiktok_relevance"
+        | "relevance_to_me"
         | "implementation_mapping"
         | "experiment_proposal"
         | "misconceptions"
@@ -838,6 +1099,15 @@ export type Database = {
         | "related_papers"
         | "boss_explanation"
         | "sources_to_verify";
+      processing_status:
+        | "none"
+        | "queued"
+        | "fetching"
+        | "extracting"
+        | "summarising"
+        | "suggesting"
+        | "done"
+        | "failed";
       radar_status: "fetched" | "scored" | "in_review" | "accepted" | "dismissed";
       reading_status:
         | "to_read"
@@ -848,6 +1118,9 @@ export type Database = {
         | "implemented"
         | "revisit";
       relation_kind: "builds_on" | "contrasts_with" | "same_family" | "cites" | "supersedes";
+      run_status: "queued" | "running" | "done" | "failed";
+      suggestion_kind: "topic" | "concept" | "priority" | "relevance";
+      suggestion_status: "proposed" | "accepted" | "rejected";
       synthesis_kind: "weekly" | "monthly";
       verification_status:
         "metadata_only" | "secondary_summary_only" | "primary_opened" | "primary_claims_verified";
@@ -976,6 +1249,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      annotation_kind: ["note", "question", "correction", "idea"],
       experiment_status: [
         "proposed",
         "implementing",
@@ -984,6 +1258,7 @@ export const Constants = {
         "completed",
         "abandoned",
       ],
+      note_authorship: ["human", "ai", "ai_edited"],
       paper_section_type: [
         "summary",
         "thesis",
@@ -1001,7 +1276,7 @@ export const Constants = {
         "serving",
         "failure_modes",
         "segment_risks",
-        "tiktok_relevance",
+        "relevance_to_me",
         "implementation_mapping",
         "experiment_proposal",
         "misconceptions",
@@ -1009,6 +1284,16 @@ export const Constants = {
         "related_papers",
         "boss_explanation",
         "sources_to_verify",
+      ],
+      processing_status: [
+        "none",
+        "queued",
+        "fetching",
+        "extracting",
+        "summarising",
+        "suggesting",
+        "done",
+        "failed",
       ],
       radar_status: ["fetched", "scored", "in_review", "accepted", "dismissed"],
       reading_status: [
@@ -1021,6 +1306,9 @@ export const Constants = {
         "revisit",
       ],
       relation_kind: ["builds_on", "contrasts_with", "same_family", "cites", "supersedes"],
+      run_status: ["queued", "running", "done", "failed"],
+      suggestion_kind: ["topic", "concept", "priority", "relevance"],
+      suggestion_status: ["proposed", "accepted", "rejected"],
       synthesis_kind: ["weekly", "monthly"],
       verification_status: [
         "metadata_only",

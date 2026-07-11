@@ -11,7 +11,7 @@ const PLANNED_PROVIDERS = [
   "Crossref",
   "OpenReview",
   "Conference proceedings",
-  "Company research blogs (ByteDance, Kuaishou, Alibaba, Pinterest, Meta, Netflix, Amazon, Google, NVIDIA)",
+  "Official company and lab research blogs",
 ];
 
 export default function RadarPage() {

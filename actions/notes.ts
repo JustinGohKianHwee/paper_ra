@@ -36,6 +36,18 @@ export async function saveSection(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated — sign in again" };
 
+  // AI provenance: editing AI content marks it "ai_edited"; human notes stay human.
+  const { data: existing } = await supabase
+    .from("paper_notes")
+    .select("authorship, body_md")
+    .eq("paper_id", paperId)
+    .eq("section_type", sectionType as PaperSectionTypeDb)
+    .maybeSingle();
+  const authorship =
+    existing?.authorship === "ai" && existing.body_md !== parsed.data.body_md
+      ? "ai_edited"
+      : (existing?.authorship ?? "human");
+
   const { data, error } = await supabase
     .from("paper_notes")
     .upsert(
@@ -45,6 +57,7 @@ export async function saveSection(
         section_type: sectionType as PaperSectionTypeDb,
         body_md: parsed.data.body_md,
         position: sectionPosition(sectionType),
+        authorship,
       },
       { onConflict: "paper_id,section_type" }
     )

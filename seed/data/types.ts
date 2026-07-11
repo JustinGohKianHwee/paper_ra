@@ -20,8 +20,8 @@ export interface PaperSeed {
   reading_status: ReadingStatus;
   verification_status: VerificationStatus;
   priority: number; // 1–5
-  tiktok_shop_relevance: number; // 0–5
-  team_relevance: number; // 0–5
+  relevance: number; // 0–5 personal/role/project relevance
+  relevance_note?: string;
   production_relevance: number; // 0–5
   production_evidence?: string;
   needs_revisit?: boolean;

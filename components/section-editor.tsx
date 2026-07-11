@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AiBadge } from "@/components/ai-badge";
 import { MarkdownView } from "@/components/markdown-view";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { NoteAuthorship } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
 export type SaveAction = (
@@ -25,6 +27,8 @@ interface Props {
   collapsible?: boolean;
   placeholder?: string;
   headingId?: string;
+  /** AI provenance of the current content; editing AI content marks it edited. */
+  authorship?: NoteAuthorship;
 }
 
 function formatTimestamp(iso: string): string {
@@ -50,9 +54,11 @@ export function SectionEditor({
   collapsible = false,
   placeholder,
   headingId,
+  authorship = "human",
 }: Props) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
+  const [liveAuthorship, setLiveAuthorship] = useState<NoteAuthorship>(authorship);
   const [state, setState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(lastEditedAt ?? null);
@@ -81,6 +87,10 @@ export function SectionEditor({
         savedValueRef.current = toSave;
         setSavedValue(toSave);
         setSavedAt(result.savedAt ?? new Date().toISOString());
+        // Mirror the server-side provenance transition (ai → ai_edited).
+        if (toSave !== initialValue) {
+          setLiveAuthorship((a) => (a === "ai" ? "ai_edited" : a));
+        }
         // Content may have changed while saving.
         setState(valueRef.current === toSave ? "saved" : "dirty");
       } else {
@@ -93,7 +103,7 @@ export function SectionEditor({
     } finally {
       savingRef.current = false;
     }
-  }, [saveAction]);
+  }, [saveAction, initialValue]);
 
   const scheduleSave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -173,9 +183,12 @@ export function SectionEditor({
   return (
     <section aria-labelledby={headingId}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 id={headingId} className="text-sm font-semibold tracking-tight">
-          {heading}
-        </h2>
+        <span className="flex items-baseline gap-2">
+          <h2 id={headingId} className="text-sm font-semibold tracking-tight">
+            {heading}
+          </h2>
+          <AiBadge authorship={liveAuthorship} />
+        </span>
         <span
           role="status"
           // Locale-formatted timestamp can differ between server and client.

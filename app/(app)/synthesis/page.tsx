@@ -11,7 +11,7 @@ export default async function SynthesisListPage() {
   const supabase = await createClient();
   const { data: notes } = await supabase
     .from("synthesis_notes")
-    .select("id, kind, period_start, title, updated_at")
+    .select("id, kind, period_start, title, updated_at, ai_draft_md, approved_at")
     .order("period_start", { ascending: false });
 
   return (
@@ -50,6 +50,22 @@ export default async function SynthesisListPage() {
               >
                 {n.title}
               </Link>
+              {n.ai_draft_md && !n.approved_at ? (
+                <Badge
+                  variant="outline"
+                  className="shrink-0 font-normal border-violet-500/40 text-violet-700 dark:text-violet-400"
+                >
+                  AI draft — review
+                </Badge>
+              ) : null}
+              {n.approved_at ? (
+                <Badge
+                  variant="outline"
+                  className="shrink-0 font-normal border-emerald-600/40 text-emerald-700 dark:text-emerald-400"
+                >
+                  approved
+                </Badge>
+              ) : null}
               <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                 {n.period_start}
               </span>

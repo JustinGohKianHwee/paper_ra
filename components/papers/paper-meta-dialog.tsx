@@ -64,8 +64,8 @@ export function PaperMetaDialog({ paper }: { paper: PaperRow }) {
         verification_status: (val("verification_status") ??
           paper.verification_status) as PaperRow["verification_status"],
         priority: Number(val("priority") ?? paper.priority),
-        tiktok_shop_relevance: Number(val("tiktok_shop_relevance") ?? paper.tiktok_shop_relevance),
-        team_relevance: Number(val("team_relevance") ?? paper.team_relevance),
+        relevance: Number(val("relevance") ?? paper.relevance),
+        relevance_note: val("relevance_note"),
         production_relevance: Number(val("production_relevance") ?? paper.production_relevance),
         production_evidence: val("production_evidence"),
         primary_source_verified: form.get("primary_source_verified") === "on",
@@ -202,13 +202,19 @@ export function PaperMetaDialog({ paper }: { paper: PaperRow }) {
           </div>
 
           {ratingSelect("priority", "Priority (1–5)", paper.priority, 5, 1)}
-          {ratingSelect(
-            "tiktok_shop_relevance",
-            "TikTok Shop relevance",
-            paper.tiktok_shop_relevance
-          )}
-          {ratingSelect("team_relevance", "Team relevance", paper.team_relevance)}
+          {ratingSelect("relevance", "Relevance to me (0–5)", paper.relevance)}
           {ratingSelect("production_relevance", "Production relevance", paper.production_relevance)}
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="relevance_note">Why it matters to me</Label>
+            <Textarea
+              id="relevance_note"
+              name="relevance_note"
+              defaultValue={paper.relevance_note ?? ""}
+              rows={2}
+              placeholder="Role, project, or research relevance — editable free text"
+            />
+          </div>
 
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="production_evidence">Production evidence (short)</Label>

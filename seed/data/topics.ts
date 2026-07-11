@@ -47,10 +47,10 @@ export const TOPIC_SEEDS: TopicSeed[] = [
       "Using LLMs for semantics around the recommender — intent mining, item understanding, data refinement, judging — rather than as the online ranker.",
   },
   {
-    name: "Content-to-Commerce Intent",
-    slug: "content-to-commerce-intent",
+    name: "Intent Modelling",
+    slug: "intent-modelling",
     overview_md:
-      "Bridging the semantic gap between content consumption (videos, searches) and shopping intent — the core TikTok Shop problem shape.",
+      "Bridging the semantic gap between observed behaviour (content consumption, searches) and underlying user intent — the core content-to-commerce problem shape.",
   },
   {
     name: "Multimodal Recommendation",

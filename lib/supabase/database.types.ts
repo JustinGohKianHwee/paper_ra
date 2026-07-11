@@ -14,6 +14,10 @@ type Tables = PublicSchema["Tables"];
 type Enums = PublicSchema["Enums"];
 
 export type PaperRow = Tables["papers"]["Row"];
+export type PaperPassageRow = Tables["paper_passages"]["Row"];
+export type PaperAnnotationRow = Tables["paper_annotations"]["Row"];
+export type ProcessingRunRow = Tables["processing_runs"]["Row"];
+export type PaperSuggestionRow = Tables["paper_suggestions"]["Row"];
 export type TopicRow = Tables["topics"]["Row"];
 export type ConceptRow = Tables["concepts"]["Row"];
 export type PaperNoteRow = Tables["paper_notes"]["Row"];
@@ -33,5 +37,11 @@ export type PaperSectionTypeDb = Enums["paper_section_type"];
 export type SynthesisKind = Enums["synthesis_kind"];
 export type RelationKind = Enums["relation_kind"];
 export type RadarStatus = Enums["radar_status"];
+export type ProcessingStatus = Enums["processing_status"];
+export type NoteAuthorship = Enums["note_authorship"];
+export type AnnotationKind = Enums["annotation_kind"];
+export type RunStatus = Enums["run_status"];
+export type SuggestionKind = Enums["suggestion_kind"];
+export type SuggestionStatus = Enums["suggestion_status"];
 
 export type SearchAllResult = PublicSchema["Functions"]["search_all"]["Returns"][number];

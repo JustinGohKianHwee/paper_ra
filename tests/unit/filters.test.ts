@@ -30,8 +30,12 @@ function paper(overrides: Partial<PaperLibraryItem>): PaperLibraryItem {
     verification_status: "metadata_only",
     priority: 3,
     visibility: "private",
-    tiktok_shop_relevance: 0,
-    team_relevance: 0,
+    relevance: 0,
+    relevance_note: null,
+    source_input: null,
+    processing_status: "none",
+    processing_error: null,
+    processed_at: null,
     production_relevance: 0,
     production_evidence: null,
     primary_source_verified: false,
@@ -100,7 +104,7 @@ describe("filterPapers", () => {
     reading_status: "queued",
     verification_status: "secondary_summary_only",
     priority: 5,
-    tiktok_shop_relevance: 5,
+    relevance: 5,
     production_evidence: "Deployed in 10+ scenarios",
     topics: [{ name: "Long User History", slug: "long-user-history" }],
     has_open_questions: true,
@@ -139,9 +143,7 @@ describe("filterPapers", () => {
       filterPapers(library, { ...DEFAULT_FILTERS, verification: ["secondary_summary_only"] })
     ).toEqual([longerPaper]);
     expect(filterPapers(library, { ...DEFAULT_FILTERS, minPriority: 4 })).toEqual([longerPaper]);
-    expect(filterPapers(library, { ...DEFAULT_FILTERS, minTiktokRelevance: 4 })).toEqual([
-      longerPaper,
-    ]);
+    expect(filterPapers(library, { ...DEFAULT_FILTERS, minRelevance: 4 })).toEqual([longerPaper]);
   });
 
   it("filters by implemented / production / open questions / experiments", () => {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import type { SaveResult } from "@/actions/notes";
 import type { ActionResult } from "@/actions/papers";
 import { slugify, uniqueSlug } from "@/lib/slug";
@@ -46,6 +47,55 @@ export async function createConcept(input: unknown): Promise<ActionResult> {
 
   revalidatePath("/concepts");
   redirect(`/concepts/${data.slug}`);
+}
+
+const conceptInlineSchema = conceptCreateSchema.extend({
+  paper_id: z.string().uuid().optional().nullable(),
+});
+
+/**
+ * Dialog-friendly variant (e.g. reading mode): creates the concept, optionally
+ * links it to a paper, and stays on the page.
+ */
+export async function createConceptInline(
+  input: unknown
+): Promise<ActionResult & { slug?: string }> {
+  const parsed = conceptInlineSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  const { paper_id, ...fields } = parsed.data;
+  const base = slugify(fields.name);
+  const { data: existing } = await supabase
+    .from("concepts")
+    .select("slug")
+    .like("slug", `${base}%`);
+  const slug = uniqueSlug(base, new Set((existing ?? []).map((r) => r.slug)));
+
+  const { data, error } = await supabase
+    .from("concepts")
+    .insert({ ...fields, user_id: user.id, slug })
+    .select("id, slug")
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  if (paper_id) {
+    await supabase
+      .from("paper_concepts")
+      .upsert(
+        { user_id: user.id, paper_id, concept_id: data.id },
+        { onConflict: "paper_id,concept_id", ignoreDuplicates: true }
+      );
+  }
+
+  revalidatePath("/concepts");
+  return { ok: true, slug: data.slug };
 }
 
 /** Autosave target for a concept Markdown field. */

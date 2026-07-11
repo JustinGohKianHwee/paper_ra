@@ -55,8 +55,8 @@ export function NewPaperForm({ topics }: { topics: { id: string; name: string }[
         verification_status: "metadata_only",
         priority: Number(val("priority") ?? 3),
         visibility: "private",
-        tiktok_shop_relevance: Number(val("tiktok_shop_relevance") ?? 0),
-        team_relevance: 0,
+        relevance: Number(val("relevance") ?? 0),
+        relevance_note: null,
         production_relevance: 0,
         production_evidence: null,
         needs_revisit: false,
@@ -89,7 +89,7 @@ export function NewPaperForm({ topics }: { topics: { id: string; name: string }[
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="space-y-1.5">
           <Label htmlFor="organisation">Organisation</Label>
-          <Input id="organisation" name="organisation" placeholder="e.g. ByteDance" />
+          <Input id="organisation" name="organisation" placeholder="e.g. DeepMind" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="year">Year</Label>
@@ -150,9 +150,9 @@ export function NewPaperForm({ topics }: { topics: { id: string; name: string }[
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="tiktok_shop_relevance">TikTok Shop relevance (0–5)</Label>
-          <Select name="tiktok_shop_relevance" defaultValue="0">
-            <SelectTrigger id="tiktok_shop_relevance" className="w-full" size="sm">
+          <Label htmlFor="relevance">Relevance to me (0–5)</Label>
+          <Select name="relevance" defaultValue="0">
+            <SelectTrigger id="relevance" className="w-full" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

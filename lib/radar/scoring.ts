@@ -8,8 +8,8 @@ import type { CandidateSignals, NormalisedCandidate, ScoredCandidate } from "@/l
  * Output is clamped to [0, 100].
  */
 export const RUBRIC_WEIGHTS = {
-  tiktokShopRelevance: 0.2,
-  recsysRelevance: 0.15,
+  personalRelevance: 0.2,
+  domainRelevance: 0.15,
   productionEvidence: 0.12,
   onlineAbEvidence: 0.13,
   mechanismTransferability: 0.15,
@@ -27,9 +27,8 @@ export function scoreCandidate(
   signals: CandidateSignals
 ): ScoredCandidate {
   const parts: Record<string, number> = {
-    tiktokShopRelevance:
-      (clamp05(signals.tiktokShopRelevance) / 5) * RUBRIC_WEIGHTS.tiktokShopRelevance,
-    recsysRelevance: (clamp05(signals.recsysRelevance) / 5) * RUBRIC_WEIGHTS.recsysRelevance,
+    personalRelevance: (clamp05(signals.personalRelevance) / 5) * RUBRIC_WEIGHTS.personalRelevance,
+    domainRelevance: (clamp05(signals.domainRelevance) / 5) * RUBRIC_WEIGHTS.domainRelevance,
     productionEvidence: signals.hasProductionEvidence ? RUBRIC_WEIGHTS.productionEvidence : 0,
     onlineAbEvidence: signals.hasOnlineAbEvidence ? RUBRIC_WEIGHTS.onlineAbEvidence : 0,
     mechanismTransferability:
@@ -59,9 +58,9 @@ export function explainRecommendation(
   score: number
 ): string {
   const reasons: string[] = [];
-  if (clamp05(signals.tiktokShopRelevance) >= 4) reasons.push("directly TikTok-Shop-relevant");
-  else if (clamp05(signals.recsysRelevance) >= 4)
-    reasons.push("strong recommender-system relevance");
+  if (clamp05(signals.personalRelevance) >= 4)
+    reasons.push("directly relevant to your focus areas");
+  else if (clamp05(signals.domainRelevance) >= 4) reasons.push("strong domain relevance");
   if (signals.hasOnlineAbEvidence) reasons.push("reports online A/B evidence");
   else if (signals.hasProductionEvidence) reasons.push("reports production deployment");
   if (clamp05(signals.mechanismTransferability) >= 4) reasons.push("transferable mechanism");

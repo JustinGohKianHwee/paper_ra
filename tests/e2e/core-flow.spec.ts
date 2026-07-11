@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * The core MVP loop: sign in → open a seeded paper → edit a structured
- * section → autosave → find the edited content via full-text search.
+ * The core loop: sign in → open a seeded paper (view mode) → edit a
+ * structured section (notes surface) → autosave → find the edited content
+ * via full-text search.
  *
  * Prerequisites: `npx supabase start` and `npm run seed`.
  */
@@ -21,24 +22,27 @@ test("login → edit structured note → autosave → search finds it", async ({
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 
-  // --- Open a seeded paper from the library ----------------------------------
+  // --- Open a seeded paper from the library (view mode) ----------------------
   await page.goto("/papers");
   await page
     .getByRole("link", { name: /LONGER: Long-sequence transformer/ })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/papers\/longer/);
-  // Verification warning for guide-derived notes must be visible.
+  await expect(page).toHaveURL(/\/papers\/longer$/);
+  // Verification warning for guide-derived notes must be visible in view mode.
   await expect(page.getByText("derived from a secondary source")).toBeVisible();
+  // View mode is read-only: no section textareas.
+  await expect(page.getByRole("textbox", { name: "Open questions" })).toHaveCount(0);
 
-  // --- Edit the "Open questions" structured section ---------------------------
+  // --- Edit a structured section on the notes surface -------------------------
+  await page.getByRole("link", { name: "Structured notes" }).click();
+  await expect(page).toHaveURL(/\/papers\/longer\/notes/);
   const textarea = page.getByRole("textbox", { name: "Open questions" });
   await textarea.scrollIntoViewIfNeeded();
   await textarea.click();
   await textarea.press("End");
   await textarea.pressSequentially(`\n- ${marker}: does compression hurt sparse users?`);
 
-  // Autosave (1.5s debounce) → "Saved" indicator in that section.
   const section = page.locator("section", {
     has: page.getByRole("heading", { name: "Open questions" }),
   });

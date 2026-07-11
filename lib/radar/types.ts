@@ -43,18 +43,17 @@ export interface NormalisedCandidate {
 
 /** Signals the scoring rubric consumes. All optional; unknown = 0. */
 export interface CandidateSignals {
-  /** 0–5: direct TikTok Shop / e-commerce relevance. */
-  tiktokShopRelevance?: number;
-  /** 0–5: recommender-system relevance. */
-  recsysRelevance?: number;
+  /** 0–5: direct relevance to your own work, projects, or research focus. */
+  personalRelevance?: number;
+  /** 0–5: relevance to your primary research domain. */
+  domainRelevance?: number;
   /** Paper reports production deployment. */
   hasProductionEvidence?: boolean;
   /** Paper reports online A/B-test evidence. */
   hasOnlineAbEvidence?: boolean;
   /** 0–5: how transferable the mechanism is outside its original system. */
   mechanismTransferability?: number;
-  /** Touches CTR, CVR, GMV, retention, trust, cold start, calibration,
-   *  latency, GPU cost, or label efficiency. */
+  /** Touches metrics or constraints you ship against (quality, cost, latency, robustness). */
   touchesProductionLevers?: boolean;
   /** 0–5: novelty relative to papers already stored. */
   noveltyVsLibrary?: number;

@@ -10,7 +10,7 @@ export function synthesisTemplate(kind: SynthesisKind): string {
     "",
     "# What changed in my mental model?",
     "",
-    "# What would I change in a recommender stack?",
+    "# What would I change in a real system based on this?",
     "",
     "# What should stay classical?",
     "",

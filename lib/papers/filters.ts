@@ -30,7 +30,7 @@ export interface PaperFilters {
   reading: ReadingStatus[];
   verification: VerificationStatus[];
   minPriority: number | null;
-  minTiktokRelevance: number | null;
+  minRelevance: number | null;
   hasProductionEvidence: boolean;
   implemented: "yes" | "no" | null;
   hasOpenQuestions: boolean;
@@ -48,7 +48,7 @@ export const DEFAULT_FILTERS: PaperFilters = {
   reading: [],
   verification: [],
   minPriority: null,
-  minTiktokRelevance: null,
+  minRelevance: null,
   hasProductionEvidence: false,
   implemented: null,
   hasOpenQuestions: false,
@@ -72,7 +72,7 @@ function list(v: string | string[] | undefined): string[] {
 export function parsePaperFilters(params: SearchParams): PaperFilters {
   const yearRaw = Number.parseInt(first(params.year) ?? "", 10);
   const minPriorityRaw = Number.parseInt(first(params.min_priority) ?? "", 10);
-  const minTiktokRaw = Number.parseInt(first(params.min_tiktok) ?? "", 10);
+  const minRelevanceRaw = Number.parseInt(first(params.min_relevance) ?? "", 10);
   const sortRaw = first(params.sort);
   const implementedRaw = first(params.implemented);
 
@@ -88,7 +88,7 @@ export function parsePaperFilters(params: SearchParams): PaperFilters {
       (verificationStatusValues as readonly string[]).includes(s)
     ),
     minPriority: Number.isFinite(minPriorityRaw) ? minPriorityRaw : null,
-    minTiktokRelevance: Number.isFinite(minTiktokRaw) ? minTiktokRaw : null,
+    minRelevance: Number.isFinite(minRelevanceRaw) ? minRelevanceRaw : null,
     hasProductionEvidence: first(params.production) === "1",
     implemented: implementedRaw === "yes" || implementedRaw === "no" ? implementedRaw : null,
     hasOpenQuestions: first(params.open_questions) === "1",
@@ -134,8 +134,7 @@ export function filterPapers(
     if (filters.verification.length > 0 && !filters.verification.includes(p.verification_status))
       return false;
     if (filters.minPriority !== null && p.priority < filters.minPriority) return false;
-    if (filters.minTiktokRelevance !== null && p.tiktok_shop_relevance < filters.minTiktokRelevance)
-      return false;
+    if (filters.minRelevance !== null && p.relevance < filters.minRelevance) return false;
     if (filters.hasProductionEvidence && !(p.production_evidence ?? "").trim()) return false;
     if (filters.implemented === "yes" && p.reading_status !== "implemented") return false;
     if (filters.implemented === "no" && p.reading_status === "implemented") return false;
@@ -166,12 +165,7 @@ export function sortPapers(papers: PaperLibraryItem[], sort: PaperSort): PaperLi
       break;
     case "relevance":
       sorted.sort(
-        (a, b) =>
-          b.tiktok_shop_relevance +
-            b.team_relevance -
-            (a.tiktok_shop_relevance + a.team_relevance) ||
-          b.priority - a.priority ||
-          byUpdatedDesc(a, b)
+        (a, b) => b.relevance - a.relevance || b.priority - a.priority || byUpdatedDesc(a, b)
       );
       break;
   }

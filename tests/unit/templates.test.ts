@@ -32,7 +32,7 @@ describe("paper template", () => {
       "serving",
       "failure_modes",
       "segment_risks",
-      "tiktok_relevance",
+      "relevance_to_me",
       "implementation_mapping",
       "experiment_proposal",
       "misconceptions",
@@ -63,7 +63,7 @@ describe("paper template", () => {
 
   it("provides human headings", () => {
     expect(sectionHeading("thesis")).toBe("One-sentence thesis");
-    expect(sectionHeading("boss_explanation")).toBe("Boss-facing explanation");
+    expect(sectionHeading("boss_explanation")).toBe("Plain-language explanation");
   });
 });
 
@@ -74,7 +74,7 @@ describe("synthesis template", () => {
       "What did I learn",
       "Which ideas connect across papers?",
       "What changed in my mental model?",
-      "What would I change in a recommender stack?",
+      "What would I change in a real system based on this?",
       "What should stay classical?",
       "What can move offline or nearline?",
       "What requires online validation?",

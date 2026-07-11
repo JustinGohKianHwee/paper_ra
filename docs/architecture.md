@@ -1,6 +1,8 @@
 # Architecture decisions
 
-Working name: **Research Atlas** (single definition in `lib/config.ts`).
+Working name: **Research Atlas** (single definition in `lib/config.ts`). Originally built
+as a recommender-systems-focused notebook; generalised in v2 into a domain-neutral
+AI-assisted paper-study tool.
 
 This is the decision log for the private-first research notebook. Each entry states the
 decision, the reason, and the consequence. Newer entries go at the bottom.
@@ -79,3 +81,70 @@ Semantic search extension path: enable `pgvector`, add an `embeddings` table key
 `npm run seed` (tsx + service-role key) inserts checked-in TypeScript data authored from
 the PDFs in `docs/source/`. No LLM calls at runtime; re-running the seed is idempotent
 (upsert by slug). The seed never invents paper content; gaps are TODOs.
+
+---
+
+# v2 — AI-assisted redesign (2026-07-11)
+
+## AD-10: Generalised relevance, no employer coupling
+
+`tiktok_shop_relevance`/`team_relevance` collapsed into one editable `relevance` (0–5)
+plus free-text `relevance_note` ("why this matters to me — role, project, or research").
+Section `tiktok_relevance` renamed to `relevance_to_me`. Employer names remain only as
+factual bibliographic metadata on papers. Consequence: the product is domain-neutral;
+personal context lives in editable fields, not schema names.
+
+## AD-11: Staged, resumable, audited AI pipeline
+
+Paper processing (`lib/ai/pipeline.ts`) runs stages — extract → passages → notes →
+suggestions — persisting after each. `processing_runs` records status, stage,
+stages_completed, model, `PROMPT_VERSION`, attempts, errors, and token usage; retry
+resumes from the last completed stage (extraction is recomputed — cheap next to LLM
+calls). Executed in a route handler (`maxDuration 300`) with client polling; a
+serverless timeout therefore loses at most one stage. Rate-limited per user
+(`AI_MAX_RUNS_PER_HOUR`).
+
+## AD-12: AI provenance is schema-level, and AI never overwrites the user
+
+`paper_notes.authorship` (`human|ai|ai_edited`; editing AI content flips to
+`ai_edited`), `AiBadge` everywhere AI text renders, `synthesis_notes.ai_draft_md`
+preserved beside the edited body. The pipeline writes only _empty_ sections and only
+paper-factual ones (`AI_NOTE_SECTIONS`); personal-reasoning sections are human-only.
+Proposals (topics, concepts, priority, relevance) land in `paper_suggestions` with an
+explicit accepted/rejected audit trail — nothing applies without user action.
+
+## AD-13: Three surfaces per paper (view / read / notes)
+
+- `/papers/[slug]` — **view mode**: clean rendered record, zero editors.
+- `/papers/[slug]/read` — **reading mode**: split-screen PDF (same-origin proxy at
+  `/api/papers/[id]/pdf` so external hosts can't block framing) beside page-linked AI
+  passage summaries (`paper_passages`), inline annotations (`paper_annotations`:
+  note/question/correction/idea, questions resolvable), and quick-create dialogs for
+  concepts/misconceptions. AI summaries guide reading; they never replace the paper.
+- `/papers/[slug]/notes` — the structured 24-section editor, kept for deep work.
+
+Chunking is page-aligned (`chunkPages`) precisely so passage page anchors stay valid for
+the viewer.
+
+## AD-14: Reading sessions are an explicit workflow
+
+`reading_sessions` gained `started_at`/`ended_at`/`takeaway_md`/`continue_md`; a partial
+unique index enforces one active session per user (starting elsewhere auto-ends the old
+one). Sessions start/resume from the reading-mode bar and end through a dialog that logs
+duration automatically and captures a takeaway + what to continue; the dashboard resumes
+active sessions and surfaces continue hints. No manual timers.
+
+## AD-15: Hardened ingestion
+
+User-supplied URLs and PDFs flow through `lib/ai/safe-fetch.ts`: https-only, no
+credentials/custom ports, private/loopback/link-local/metadata hosts blocked with DNS
+re-checking, manual redirect verification per hop (max 3), content-type allowlists, and
+a streamed 30 MB size cap. Extracted text is treated as untrusted (prompt-injection
+preamble in every prompt); the UI discloses OpenAI submission (`AI_DISCLOSURE`).
+
+## AD-16: Deterministic AI testing
+
+`OPENAI_BASE_URL` override + `tests/mocks/openai-server.mjs` (dispatches on the JSON-
+schema name) give unit/integration/E2E suites full pipeline coverage with zero API
+spend; a gated manual test (`RUN_REAL_AI=1 … tests/manual/real-ai.test.ts`) verifies the
+real integration.

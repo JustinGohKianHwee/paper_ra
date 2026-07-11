@@ -20,8 +20,8 @@ describe("scoreCandidate", () => {
 
   it("scores a maximal candidate at (or near) 100 minus nothing", () => {
     const scored = scoreCandidate(candidate(), {
-      tiktokShopRelevance: 5,
-      recsysRelevance: 5,
+      personalRelevance: 5,
+      domainRelevance: 5,
       hasProductionEvidence: true,
       hasOnlineAbEvidence: true,
       mechanismTransferability: 5,
@@ -34,7 +34,7 @@ describe("scoreCandidate", () => {
   });
 
   it("penalises reading cost", () => {
-    const base = { tiktokShopRelevance: 5, recsysRelevance: 5 };
+    const base = { personalRelevance: 5, domainRelevance: 5 };
     const cheap = scoreCandidate(candidate(), { ...base, readingCost: 0 });
     const dear = scoreCandidate(candidate(), { ...base, readingCost: 5 });
     expect(dear.score).toBeLessThan(cheap.score);
@@ -48,20 +48,18 @@ describe("scoreCandidate", () => {
 
   it("clamps out-of-range signals instead of exploding", () => {
     const scored = scoreCandidate(candidate(), {
-      tiktokShopRelevance: 99,
-      recsysRelevance: -7,
+      personalRelevance: 99,
+      domainRelevance: -7,
     });
     expect(scored.score).toBeGreaterThanOrEqual(0);
     expect(scored.score).toBeLessThanOrEqual(100);
-    expect(scored.scoreBreakdown.tiktokShopRelevance).toBeCloseTo(
-      RUBRIC_WEIGHTS.tiktokShopRelevance
-    );
-    expect(scored.scoreBreakdown.recsysRelevance).toBe(0);
+    expect(scored.scoreBreakdown.personalRelevance).toBeCloseTo(RUBRIC_WEIGHTS.personalRelevance);
+    expect(scored.scoreBreakdown.domainRelevance).toBe(0);
   });
 
   it("returns an auditable breakdown that sums to the score", () => {
     const scored = scoreCandidate(candidate(), {
-      tiktokShopRelevance: 4,
+      personalRelevance: 4,
       hasOnlineAbEvidence: true,
       readingCost: 2,
     });
@@ -74,7 +72,7 @@ describe("explainRecommendation", () => {
   it("mentions the strongest signals without inventing claims", () => {
     const text = explainRecommendation(
       candidate("LONGER"),
-      { tiktokShopRelevance: 5, hasOnlineAbEvidence: true, touchesProductionLevers: true },
+      { personalRelevance: 5, hasOnlineAbEvidence: true, touchesProductionLevers: true },
       80
     );
     expect(text).toContain("LONGER");

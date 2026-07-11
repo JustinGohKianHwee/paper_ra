@@ -71,7 +71,7 @@ export function FilterBar({ filters, organisations, years, topics, resultCount }
     filters.reading.length > 0 ||
     filters.verification.length > 0 ||
     filters.minPriority !== null ||
-    filters.minTiktokRelevance !== null ||
+    filters.minRelevance !== null ||
     filters.hasProductionEvidence ||
     filters.implemented !== null ||
     filters.hasOpenQuestions ||

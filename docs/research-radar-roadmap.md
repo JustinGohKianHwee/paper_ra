@@ -48,8 +48,8 @@ Meta, Netflix, Amazon, Google, NVIDIA).
 
 | Signal                                                                                                                    | Weight        |
 | ------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| TikTok Shop relevance (0–5)                                                                                               | 0.20          |
-| Recommender-system relevance (0–5)                                                                                        | 0.15          |
+| Personal relevance (0–5)                                                                                                  | 0.20          |
+| Domain relevance (0–5)                                                                                                    | 0.15          |
 | Online A/B-test evidence                                                                                                  | 0.13          |
 | Production evidence                                                                                                       | 0.12          |
 | Mechanism transferability (0–5)                                                                                           | 0.15          |
