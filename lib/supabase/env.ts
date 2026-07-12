@@ -3,9 +3,15 @@
  * same, explicit way when the environment is not set up.
  */
 export function getSupabaseEnv(): { url: string; anonKey: string } | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!rawUrl || !rawKey) return null;
+  // Normalise: strip surrounding whitespace and any trailing slash. supabase-js
+  // builds `${url}/auth/v1/...`, so a trailing slash yields a `//` path that the
+  // Supabase gateway rejects ("Invalid path specified in request URL"). This is
+  // an easy env-var footgun (e.g. pasting the URL with a slash into Vercel).
+  const url = rawUrl.trim().replace(/\/+$/, "");
+  const anonKey = rawKey.trim();
   return { url, anonKey };
 }
 
