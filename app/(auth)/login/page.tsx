@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/app/(auth)/login/login-form";
-import { APP_NAME } from "@/lib/config";
+import { APP_NAME, signupEnabled } from "@/lib/config";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -19,7 +19,7 @@ export default async function LoginPage({
             A private research notebook. Sign in to continue.
           </p>
         </div>
-        <LoginForm next={next} />
+        <LoginForm next={next} allowSignup={signupEnabled()} />
         <p className="text-xs text-muted-foreground text-center text-balance">
           For public papers and personal learning only — never store confidential work information
           here.

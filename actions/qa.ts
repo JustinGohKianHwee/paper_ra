@@ -24,6 +24,7 @@ const askSchema = z.object({
   annotation_id: z.string().uuid(),
   /** Omitted for the first ask — the annotation's own text is the question. */
   question: z.string().trim().min(3).max(4000).optional(),
+  retry_qa_id: z.string().uuid().optional(),
 });
 
 /**
@@ -71,7 +72,22 @@ export async function askAi(input: unknown): Promise<QaActionResult> {
 
   let question: string;
   let position: number;
-  if (parsed.data.question) {
+  if (parsed.data.retry_qa_id) {
+    const { data: retryRow } = await supabase
+      .from("paper_qa")
+      .select("id, annotation_id, position, question_md, status")
+      .eq("id", parsed.data.retry_qa_id)
+      .maybeSingle();
+    if (!retryRow || retryRow.annotation_id !== annotation.id) {
+      return { ok: false, error: "Could not find that failed answer to retry." };
+    }
+    if (retryRow.status !== "failed") {
+      return { ok: false, error: "Only failed answers can be retried." };
+    }
+    question = retryRow.question_md;
+    position = retryRow.position;
+    await supabase.from("paper_qa").delete().eq("id", retryRow.id);
+  } else if (parsed.data.question) {
     // Follow-up: appended to the thread.
     question = parsed.data.question;
     position = (last?.position ?? 0) + 1;

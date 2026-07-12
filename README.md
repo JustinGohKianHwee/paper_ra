@@ -167,9 +167,14 @@ with `npx supabase gen types typescript --local > lib/supabase/database.gen.ts`.
 
 ## Production deployment
 
+Full step-by-step: **[docs/deployment.md](docs/deployment.md)** (private single-user deploy —
+fresh cloud Supabase project + Vercel, sign-ups closed). In short:
+
 1. Create a hosted Supabase project; `npx supabase link --project-ref <ref>` then
    `npx supabase db push`.
-2. Disable public sign-ups after creating your account (single-user tool).
+2. **Keep sign-ups closed** (the default): leave `ALLOW_SIGNUP` unset so only accounts you
+   create can log in — the sign-up UI and action are disabled. Also disable sign-ups in the
+   Supabase dashboard (defence in depth). Create your account via the dashboard or `seed`.
 3. Deploy to a Node host (e.g. Vercel): set `NEXT_PUBLIC_SUPABASE_URL`,
    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `OPENAI_API_KEY` (server env only). Do **not**
    deploy the service-role key with the app.
@@ -179,6 +184,7 @@ with `npx supabase gen types typescript --local > lib/supabase/database.gen.ts`.
 
 ## Docs
 
+- [docs/deployment.md](docs/deployment.md) — private single-user deploy runbook
 - [docs/architecture.md](docs/architecture.md) — decision log (ADs)
 - [docs/data-model.md](docs/data-model.md) — schema reference
 - [docs/research-radar-roadmap.md](docs/research-radar-roadmap.md) — future automated discovery

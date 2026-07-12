@@ -9,18 +9,23 @@ import { Label } from "@/components/ui/label";
 
 const initialState: AuthFormState = {};
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, allowSignup = false }: { next?: string; allowSignup?: boolean }) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [signInState, signInAction, signInPending] = useActionState(signIn, initialState);
   const [signUpState, signUpAction, signUpPending] = useActionState(signUp, initialState);
 
-  const state = mode === "sign-in" ? signInState : signUpState;
-  const pending = mode === "sign-in" ? signInPending : signUpPending;
+  // When sign-ups are disabled, sign-in is the only mode.
+  const effectiveMode = allowSignup ? mode : "sign-in";
+  const state = effectiveMode === "sign-in" ? signInState : signUpState;
+  const pending = effectiveMode === "sign-in" ? signInPending : signUpPending;
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={mode === "sign-in" ? signInAction : signUpAction} className="space-y-4">
+        <form
+          action={effectiveMode === "sign-in" ? signInAction : signUpAction}
+          className="space-y-4"
+        >
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -39,7 +44,7 @@ export function LoginForm({ next }: { next?: string }) {
               id="password"
               name="password"
               type="password"
-              autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+              autoComplete={effectiveMode === "sign-in" ? "current-password" : "new-password"}
               required
               minLength={8}
             />
@@ -53,16 +58,18 @@ export function LoginForm({ next }: { next?: string }) {
           {state.message ? <p className="text-sm text-muted-foreground">{state.message}</p> : null}
 
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Create account"}
+            {pending ? "Please wait…" : effectiveMode === "sign-in" ? "Sign in" : "Create account"}
           </Button>
 
-          <button
-            type="button"
-            className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
-            onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
-          >
-            {mode === "sign-in" ? "First time? Create an account" : "Already registered? Sign in"}
-          </button>
+          {allowSignup ? (
+            <button
+              type="button"
+              className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+              onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
+            >
+              {mode === "sign-in" ? "First time? Create an account" : "Already registered? Sign in"}
+            </button>
+          ) : null}
         </form>
       </CardContent>
     </Card>

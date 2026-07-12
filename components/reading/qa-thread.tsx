@@ -53,9 +53,9 @@ export function QaThread({
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [followUp, setFollowUp] = useState("");
 
-  function ask(question?: string) {
+  function ask(question?: string, retryQaId?: string) {
     startTransition(async () => {
-      const result = await askAi({ annotation_id: annotationId, question });
+      const result = await askAi({ annotation_id: annotationId, question, retry_qa_id: retryQaId });
       if (result.ok) {
         setFollowUp("");
         setFollowUpOpen(false);
@@ -74,7 +74,7 @@ export function QaThread({
   return (
     <div className="mt-1.5 space-y-1.5 border-l-2 border-violet-500/30 pl-2">
       {qa.map((row) => (
-        <QaItem key={row.id} row={row} onRetry={() => ask()} />
+        <QaItem key={row.id} row={row} onRetry={() => ask(undefined, row.id)} />
       ))}
 
       {pending ? (

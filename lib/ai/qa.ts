@@ -16,7 +16,7 @@ import type { Database, PaperQaRow } from "@/lib/supabase/database.types";
 type Client = SupabaseClient<Database>;
 
 const MAX_FOLLOW_UP_CONTEXT = 3;
-const QA_MAX_OUTPUT_TOKENS = Number(process.env.QA_MAX_OUTPUT_TOKENS ?? 1200);
+const QA_MAX_OUTPUT_TOKENS = Number(process.env.QA_MAX_OUTPUT_TOKENS ?? 2000);
 
 /**
  * Answers a reading question from the paper's own extracted text.

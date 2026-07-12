@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { signupEnabled } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 
 const credentialsSchema = z.object({
@@ -34,6 +35,11 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
 }
 
 export async function signUp(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  // Server-side enforcement: even a direct action call cannot register when
+  // sign-ups are disabled (the UI hides the option separately).
+  if (!signupEnabled()) {
+    return { error: "Sign-ups are disabled on this instance." };
+  }
   const parsed = credentialsSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),

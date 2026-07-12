@@ -90,8 +90,17 @@ export async function structuredCompletion<T>(options: {
         max_completion_tokens: maxOutputTokens ?? 8000,
       });
       usage = addUsage(usage, response.usage);
-      const content = response.choices[0]?.message?.content;
-      if (!content) throw new Error("Empty model response");
+      const choice = response.choices[0];
+      const content = choice?.message?.content;
+      if (!content) {
+        const finishReason = choice?.finish_reason ?? "unknown";
+        if (finishReason === "length") {
+          throw new Error(
+            "The model ran out of response budget before returning an answer. Try a narrower question or increase QA_MAX_OUTPUT_TOKENS."
+          );
+        }
+        throw new Error(`The model returned an empty response (finish_reason: ${finishReason}).`);
+      }
       return { data: JSON.parse(content) as T, usage };
     } catch (error) {
       lastError = error;

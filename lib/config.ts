@@ -10,6 +10,16 @@ export const APP_DESCRIPTION = "A private, AI-assisted notebook for studying res
 export const WEEKLY_READING_TARGET = 1;
 
 /**
+ * Whether self-service sign-up is allowed. **Off by default** so a deployed
+ * instance is single-user (you create your account, e.g. via `npm run seed` or
+ * the Supabase dashboard, and nobody else can register). Set `ALLOW_SIGNUP=true`
+ * only for a public/multi-user deployment. Server-only (not `NEXT_PUBLIC_`).
+ */
+export function signupEnabled(): boolean {
+  return process.env.ALLOW_SIGNUP === "true";
+}
+
+/**
  * The persistent privacy reminder. Shown (unobtrusively) wherever notes are
  * written. Do not remove — see CLAUDE.md privacy rules.
  */
