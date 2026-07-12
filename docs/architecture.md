@@ -159,8 +159,10 @@ the primary object while notes and AI structure stay available:
   toggle, and sign-out controls, but lets the desktop sidebar collapse on
   `/papers/[slug]/read` to reclaim width for the reader.
 - `components/reading/reading-workspace.tsx` owns the three reading panes: structured
-  notes on the left, PDF in the center, and the AI passage/annotation rail on the right.
-  The layout persists as `ra:reading-layout:v4`.
+  notes on the left, PDF in the center, and the AI passage/annotation/Q&A rail on the
+  right. Drag positions persist as `ra:reading-layout:v4`, hidden side panes as
+  `ra:reading-hidden-panels:v1` (a hidden pane's content unmounts), and per-paper page +
+  zoom as `ra:pdf-state:<paperId>`. Below `1280px` the panes become tabs.
 - `react-resizable-panels` size props must be explicit percentage strings, not bare
   numbers. Bare numbers are pixels, which previously made the side panes render as
   unusable slivers. Current defaults are `22% / 52% / 26%`.
@@ -174,11 +176,11 @@ Important equations are often easiest to capture from the PDF visually, but the 
 canonical note format is still Markdown + KaTeX. Reading mode therefore adds an
 ephemeral formula-OCR tool rather than a new saved object type:
 
-- `components/reading/formula-ocr-dialog.tsx` supports paste, image upload, and browser
-  screen capture (`getDisplayMedia`) followed by an in-dialog crop rectangle.
-- `actions/formula-ocr.ts` validates the image data URL and calls OpenAI with a
-  structured-output prompt that returns raw LaTeX, display-math Markdown, confidence,
-  and warnings.
+- `components/reading/formula-ocr-dialog.tsx` accepts a pasted or uploaded equation
+  screenshot and an in-dialog drag-crop rectangle (no screen-capture API).
+- `actions/formula-ocr.ts` validates the image is a png/jpg/webp data URL and calls
+  OpenAI vision with a structured-output prompt that returns raw LaTeX, display-math
+  Markdown, confidence, and warnings.
 - Screenshots are not written to Supabase or Storage. The user explicitly copies the
   LaTeX/Markdown into important-equation sections, notes, or questions.
 - Cost control: `FORMULA_OCR_MODEL` defaults to `gpt-5.4-nano`; users can override it

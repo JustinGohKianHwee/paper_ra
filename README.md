@@ -27,7 +27,8 @@ consolidate everything into weekly syntheses.
    collapse and resize; layout, page, and zoom persist. Annotate inline — notes,
    questions, corrections, ideas — quick-create concepts/misconceptions, and ask the AI
    to **answer questions from the paper itself** (cited pages, direct claims separated
-   from interpretation, honest "the paper doesn't cover this"). Sessions start/resume
+   from interpretation, honest "the paper doesn't cover this"). Paste or upload a
+   screenshot of an equation to convert it to copy-ready KaTeX. Sessions start/resume
    with one click and log themselves when you end them.
 3. **View** (`/papers/[slug]`): the clean, read-only record of everything accumulated —
    summary, breakdown with your annotations and Q&A, structured notes, misconceptions,

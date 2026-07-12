@@ -20,51 +20,52 @@ portfolio site.
 - Papers have three surfaces: **view mode** `/papers/[slug]` (rendered, no editors),
   **reading mode** `/papers/[slug]/read` (split PDF + passages + annotations + sessions),
   and **structured notes** `/papers/[slug]/notes` (section editors). Keep that separation.
-- Markdown is the canonical note format. Rendering: `react-markdown` + `remark-gfm` +
-  `remark-math` + `rehype-katex` + `rehype-highlight`. The editor is a plain textarea with
-  edit/preview tabs and debounced autosave — do not build a rich-text editor.
+- Markdown is the canonical note format. Rendering (`components/markdown-view.tsx`):
+  `react-markdown` + `remark-gfm` + `remark-math` + `rehype-katex` + `rehype-highlight`,
+  after `normaliseMarkdownMath` (`lib/markdown/math.ts`, pure/tested) rewrites `\[…\]` /
+  `\(…\)` and LaTeX environments to `$$`/`$` KaTeX delimiters. Pass `assumeDisplayMath`
+  when the whole body is one bare equation (the `equations` note section does this). The
+  editor is a plain textarea with edit/preview tabs and debounced autosave — do not build
+  a rich-text editor.
 - Domain logic that must be testable (slugs, filters, radar scoring/dedup, templates,
   input parsing, chunking, prompts) lives in `lib/` as pure functions, never inline in
   components.
 - App name, targets, and other tunables live in `lib/config.ts`.
 
-## Recent Codex handoff: reading mode layout (2026-07-12)
+## Reading mode layout & formula OCR
 
-The reading page was reshaped into a reader-first three-pane workspace:
+The reading page is a reader-first, three-pane workspace. Structure:
 
-- `app/(app)/layout.tsx` now delegates the authenticated shell to
-  `components/app-shell.tsx`. Keep auth/data loading in the server layout; keep
-  interactive shell state in the client component.
+- `app/(app)/layout.tsx` (server) does auth + data loading only, then delegates the
+  authenticated shell to `components/app-shell.tsx` (client). Keep that split.
 - `components/app-shell.tsx` owns the desktop sidebar, mobile header, command palette,
-  sign-out controls, and theme toggle. On `/papers/[slug]/read`, the desktop sidebar can
-  collapse to a narrow rail to give the PDF more width. The state is stored in
-  `localStorage` key `ra:reading-sidebar-collapsed`.
-- `components/nav-links.tsx` supports `collapsed`, rendering icon-only links with
-  accessible labels and `title`s.
-- `components/reading/reading-workspace.tsx` owns the reading workspace: left structured
-  notes, middle PDF reader, right AI passage/annotation rail. It uses
-  `react-resizable-panels` and persists its layout under `ra:reading-layout:v4`.
-- Important gotcha: `react-resizable-panels` treats bare numeric `defaultSize`,
-  `minSize`, and `maxSize` values as pixels. Use explicit percentage strings such as
-  `"22%"`, `"52%"`, and `"26%"`; otherwise side panes collapse into tiny slivers.
-- Current desktop pane defaults are notes `22%`, PDF `52%`, assistant `26%`; minimums
-  are notes `18%`, PDF `40%`, assistant `22%`. Desktop mode starts at `1280px`; below
-  that, reading mode switches to tabs.
-- Passage cards in the assistant rail are page-linked. Clicking a passage header, or
-  non-interactive empty/body space in the passage card, calls `jumpTo(passage)` and
-  reloads the PDF iframe at `paper.page_start`. Interactive controls inside the card
-  (buttons, links, inputs, textareas, selects) intentionally do not trigger a jump.
-- The PDF iframe fragment uses `#page=<n>&pagemode=none&zoom=page-width` for fit-width
-  mode. Numeric zoom options use `zoom=<value>`.
-- Reading mode includes `FormulaOcrDialog` (`components/reading/formula-ocr-dialog.tsx`),
-  exposed from the PDF toolbar and assistant rail. It accepts paste/upload/screen-capture
-  images, lets the user crop, then calls the server action `recognizeFormula` in
-  `actions/formula-ocr.ts`. The screenshot is sent once to OpenAI and is not persisted;
-  the user copies the returned LaTeX/`$$...$$` Markdown into notes or questions manually.
-  Optional env: `FORMULA_OCR_MODEL` (default `gpt-5.4-nano`).
-- Playwright could not be used locally during this change because the browser binary was
-  not installed, so layout validation was via code inspection plus `typecheck`, `lint`,
-  and unit tests.
+  sign-out, and theme toggle. On `/papers/[slug]/read` the sidebar collapses to a narrow
+  icon rail to give the PDF more width (`localStorage` key `ra:reading-sidebar-collapsed`);
+  `components/nav-links.tsx` renders icon-only links with `sr-only` labels + `title`s when
+  `collapsed`.
+- The full-bleed reading route sets `data-fullbleed`; `<main>` widens (via `:has()`) so the
+  workspace uses the whole viewport width.
+- `components/reading/reading-workspace.tsx` owns the panes (structured notes | PDF | AI
+  passage/annotation/Q&A rail) with `react-resizable-panels`. Persistence keys:
+  drag positions `ra:reading-layout:v4`; hidden side panes `ra:reading-hidden-panels:v1`
+  (a hidden pane's content unmounts); per-paper page + zoom `ra:pdf-state:<paperId>`.
+- **`react-resizable-panels` gotcha**: bare numeric `defaultSize`/`minSize`/`maxSize` are
+  pixels — always pass percentage strings (`"22%"`, `"52%"`, `"26%"`) or side panes render
+  as slivers. Desktop defaults notes `22%` / PDF `52%` / rail `26%` (mins `18%`/`40%`/`22%`);
+  desktop mode starts at `1280px`, below which the panes become tabs.
+- Passage cards are page-linked: clicking a passage header or non-interactive card space
+  calls `jumpTo(passage)` (reloads the PDF iframe at `page_start`); interactive controls
+  inside the card do not jump. The PDF fragment is
+  `#page=<n>&pagemode=none&zoom=page-width` (fit) or `zoom=<value>` (numeric).
+- Client-side hydration flags (mounted, media query) use `useSyncExternalStore`, never
+  `useState` + effect — the react-hooks lint forbids setState-in-effect.
+- **Formula OCR** (`components/reading/formula-ocr-dialog.tsx`, exposed from the PDF
+  toolbar and rail): the user pastes or uploads an equation screenshot and drag-crops it;
+  `recognizeFormula` (`actions/formula-ocr.ts`) sends it once to OpenAI vision
+  (`FORMULA_OCR_MODEL`, default `gpt-5.4-nano`) for structured `{latex, display_md,
+confidence, warnings}`. The image is validated (png/jpg/webp data URL) and never
+  persisted; the user copies the LaTeX / `$$…$$` Markdown into notes or questions. No new
+  saved object type.
 
 ## AI conventions (non-negotiable)
 
