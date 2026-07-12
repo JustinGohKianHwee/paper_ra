@@ -306,40 +306,49 @@ export type Database = {
       };
       paper_annotations: {
         Row: {
+          anchor: Json | null;
           body_md: string;
           created_at: string;
           fts: unknown;
           id: string;
           kind: Database["public"]["Enums"]["annotation_kind"];
+          page_number: number | null;
           paper_id: string;
           passage_id: string | null;
           resolved: boolean;
+          selected_text: string | null;
           updated_at: string;
           user_id: string;
           visibility: Database["public"]["Enums"]["visibility"];
         };
         Insert: {
+          anchor?: Json | null;
           body_md: string;
           created_at?: string;
           fts?: unknown;
           id?: string;
           kind?: Database["public"]["Enums"]["annotation_kind"];
+          page_number?: number | null;
           paper_id: string;
           passage_id?: string | null;
           resolved?: boolean;
+          selected_text?: string | null;
           updated_at?: string;
           user_id: string;
           visibility?: Database["public"]["Enums"]["visibility"];
         };
         Update: {
+          anchor?: Json | null;
           body_md?: string;
           created_at?: string;
           fts?: unknown;
           id?: string;
           kind?: Database["public"]["Enums"]["annotation_kind"];
+          page_number?: number | null;
           paper_id?: string;
           passage_id?: string | null;
           resolved?: boolean;
+          selected_text?: string | null;
           updated_at?: string;
           user_id?: string;
           visibility?: Database["public"]["Enums"]["visibility"];

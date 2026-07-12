@@ -244,3 +244,76 @@ AI/violet/Sparkles — always icon + label + colour, never colour alone.
 The feature is hidden from navigation, dashboard, command palette, paper view, and
 search (`search_all` union branch removed), but its tables, migrations, records, and
 routes remain (the pages carry a "dormant feature" banner). Restoring it is additive.
+
+## AD-24: Ingestion and Q&A have independent rate budgets; Q&A is not a processing run
+
+Paper ingestion (multi-stage, expensive) and interactive Q&A (single lightweight call) are
+different workloads and must not starve each other. Previously both counted against one
+`AI_MAX_RUNS_PER_HOUR` budget via `processing_runs`, so a burst of reading-mode questions
+could block processing a new paper. Now:
+
+- `processing_runs` is reserved for actual ingestion jobs. Q&A no longer writes a run row —
+  its full audit (model, prompt version, coverage, cited pages, token usage, status, error)
+  already lives on the `paper_qa` row, so the run row was pure duplication. Nothing in the
+  UI, dashboard, or status polling read Q&A run rows, so removing them was safe.
+- `assertIngestionWithinLimit` counts `processing_runs` (`AI_MAX_RUNS_PER_HOUR`, default 10);
+  `assertQaWithinLimit` counts `paper_qa` rows (`QA_MAX_PER_HOUR`, default 60). Limits are
+  read at call time so they are tunable and testable without a rebuild. `RateLimitError`
+  carries a `workload` discriminator and a message naming which limit was hit.
+
+## AD-25: The PDF is a pdf.js document layer, not an embedded iframe
+
+Reading mode previously used a native `<iframe>` with `#page`/`zoom` URL-fragment controls
+and a nonce-forced remount to jump pages — fragile across browsers and jarring on every
+jump. It is replaced by a pdf.js viewer (`components/reading/pdf-viewer.tsx`, via
+`react-pdf`) that establishes a real document-interaction layer:
+
+- The document loads **once** from the same-origin auth-scoped proxy (`/api/papers/[id]/pdf`).
+  Pages render lazily around the viewport (a window around the current page) so a long paper
+  never mounts dozens of canvases; placeholders keep scroll geometry stable.
+- Navigation is imperative (`goToPage`) and scrolls without recreating the viewer, exposed
+  through a small `PdfNavContext` so passage summaries, Q&A citations, and "return to source"
+  can all drive it without prop-drilling. Page, zoom, and reading position persist per paper;
+  position is re-anchored when zoom or panel width reflows the layout.
+- The pdf.js worker is served from our own origin (`public/pdf.worker.min.mjs`, vendored by
+  `scripts/setup-pdf-worker.mjs`), never a CDN. The viewer is client-only; it renders after
+  mount so it never executes during SSR.
+- **Uniform page-size assumption:** placeholder spacing uses the first page's aspect ratio
+  for all pages. This holds for essentially all papers; genuinely mixed page sizes would only
+  affect placeholder spacing (not rendering or navigation correctness).
+
+## AD-26: Text selection is a first-class research interaction with stored provenance
+
+The pdf.js text layer makes selection actionable. Selecting paper text raises a small
+floating toolbar (`components/reading/selection-actions.tsx`) with **Ask about this** and
+**Create note**. Both are ordinary annotations — a selection question is a `question`
+annotation (its Q&A threads under it as usual), a selection note is a `note` annotation — so
+provenance lives on `paper_annotations` (`page_number`, `selected_text`, `anchor` jsonb),
+shared by both and reusing the entire existing annotation/Q&A path rather than a parallel
+system. For selection Q&A, the selected passage is passed through
+`askAboutSelection → answerQuestion → buildQaPrompt` as **primary evidence**: it is
+guaranteed to be in context and always cited, so lexical retrieval never has to rediscover
+the passage the user explicitly pointed at (retrieval only supplements). Grounding on the
+`paper_qa` row records the selection page.
+
+## AD-27: Anchoring is page-accurate now; exact text-range highlighting is deferred
+
+"Return to source" reliably navigates to the correct page (`page_number` drives
+`goToPage`) — that is the guaranteed behaviour. Robust, persistent _exact-range_ highlighting
+in pdf.js is genuinely hard: the text layer fragments text into many positioned spans, so a
+stored character range does not map cleanly back onto rendered spans, and naive string
+matching fails on repeated phrases, hyphenation, ligatures, and cross-span selections. Rather
+than fake reliability with brittle matching, the `anchor` column stores a text-quote anchor
+(`{ page, quote: { exact, prefix, suffix } }`) now, so a future stage can implement
+quote-based highlighting (W3C-style) on top of the existing data without a migration or data
+loss. Until then, provenance is page-level and honest about it.
+
+## AD-28: Semantic/hybrid retrieval is the next stage, not this one
+
+Q&A retrieval remains lexical (`lib/ai/qa-retrieval.ts`, term overlap). It is deliberately
+kept for this stage: the selection interaction already guarantees the exact passage is
+primary context, so grounding does not depend on semantic recall here, and adding pgvector
+now would have coupled two large changes. The retrieval call sits behind a single boundary
+(`selectContext` produces the supplementary pages fed to the prompt), so a hybrid
+lexical+vector retriever can replace it later without touching the selection interaction, the
+prompt shape, or the provenance model. That is the recommended next retrieval improvement.

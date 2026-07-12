@@ -8,7 +8,7 @@ import {
   structuredCompletion,
   type UsageTotals,
 } from "@/lib/ai/client";
-import { assertWithinRunLimit, loadPaperPages, persistPaperPages } from "@/lib/ai/pipeline";
+import { assertQaWithinLimit, loadPaperPages, persistPaperPages } from "@/lib/ai/pipeline";
 import { QA_JSON_SCHEMA, buildQaPrompt, qaResponseSchema } from "@/lib/ai/prompts";
 import { selectContext } from "@/lib/ai/qa-retrieval";
 import type { Database, PaperQaRow } from "@/lib/supabase/database.types";
@@ -22,11 +22,11 @@ const QA_MAX_OUTPUT_TOKENS = Number(process.env.QA_MAX_OUTPUT_TOKENS ?? 1200);
  * Answers a reading question from the paper's own extracted text.
  *
  * Retrieval-first: pages persisted at processing time are ranked lexically
- * against the question and only the best few are sent to the model. Every
- * answer records model, prompt version, grounding (cited pages + overlapping
- * passages), token usage, and failures — both on the paper_qa row and as a
- * `qa` processing run, so Q&A shares the pipeline's audit trail and rate
- * limit.
+ * against the question and only the best few are sent to the model. The full
+ * audit — model, prompt version, grounding (cited pages + overlapping
+ * passages), token usage, status, and errors — lives on the `paper_qa` row
+ * itself. Q&A is a lightweight interactive workload, so it is NOT recorded as
+ * a multi-stage `processing_runs` job and has its own hourly budget.
  */
 export async function answerQuestion(
   supabase: Client,
@@ -37,9 +37,15 @@ export async function answerQuestion(
     question: string;
     /** 1 = the annotation's own question; 2+ = follow-ups. */
     position: number;
+    /**
+     * The exact passage the user selected in the PDF. When present it is the
+     * PRIMARY grounding context (never re-derived from lexical retrieval); the
+     * retrieved pages only supplement it.
+     */
+    primarySelection?: { text: string; page: number } | null;
   }
 ): Promise<PaperQaRow> {
-  await assertWithinRunLimit(supabase);
+  await assertQaWithinLimit(supabase);
 
   const { data: paper, error: paperError } = await supabase
     .from("papers")
@@ -68,20 +74,6 @@ export async function answerQuestion(
     throw new Error(insertError?.message ?? "Could not record the question");
   }
 
-  const { data: run } = await supabase
-    .from("processing_runs")
-    .insert({
-      user_id: userId,
-      paper_id: options.paperId,
-      status: "running",
-      stage: "qa",
-      model: aiModel(),
-      prompt_version: PROMPT_VERSION,
-      started_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
   let usage: UsageTotals = EMPTY_USAGE;
 
   const fail = async (message: string): Promise<PaperQaRow> => {
@@ -91,17 +83,6 @@ export async function answerQuestion(
       .eq("id", qaRow.id)
       .select("*")
       .single();
-    if (run) {
-      await supabase
-        .from("processing_runs")
-        .update({
-          status: "failed",
-          error: message,
-          usage: { ...usage },
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", run.id);
-    }
     return data ?? { ...qaRow, status: "failed", error: message };
   };
 
@@ -127,11 +108,27 @@ export async function answerQuestion(
       );
     }
 
-    const context = selectContext(
+    const retrieved = selectContext(
       pageRows.map((p) => ({ pageNo: p.page_no, content: p.content })),
       options.question
     );
-    if (context.length === 0) {
+
+    // Build the context pages. A selected passage is guaranteed context (its
+    // page is prepended if retrieval missed it) — the user pointed at it, so we
+    // never rely on lexical overlap to rediscover it.
+    const contextPages: { pageNo: number; content: string }[] = retrieved.map((p) => ({
+      pageNo: p.pageNo,
+      content: p.content,
+    }));
+    const selection = options.primarySelection ?? null;
+    if (selection && selection.page >= 1 && selection.page <= pageRows.length) {
+      if (!contextPages.some((c) => c.pageNo === selection.page)) {
+        const row = pageRows.find((r) => r.page_no === selection.page);
+        if (row) contextPages.unshift({ pageNo: selection.page, content: row.content });
+      }
+    }
+
+    if (contextPages.length === 0 && !selection) {
       return await fail(
         "The question didn't match any part of the extracted paper text — try rephrasing it with terms from the paper."
       );
@@ -163,9 +160,10 @@ export async function answerQuestion(
     const prompt = buildQaPrompt({
       paperTitle: paper.title,
       question: options.question,
-      contextPages: context.map((p) => ({ pageNo: p.pageNo, content: p.content })),
+      contextPages,
       passageIndex,
       priorThread,
+      primarySelection: selection,
     });
 
     const result = await structuredCompletion<unknown>({
@@ -183,6 +181,8 @@ export async function answerQuestion(
     const citedPages = [...new Set(parsed.cited_pages)].filter(
       (p) => p >= 1 && p <= pageRows.length
     );
+    // A selection-grounded answer always cites the selected page.
+    if (selection && !citedPages.includes(selection.page)) citedPages.unshift(selection.page);
     const citedPassageIds = (passages ?? [])
       .filter(
         (p) =>
@@ -200,7 +200,8 @@ export async function answerQuestion(
         grounding: {
           pages: citedPages,
           passage_ids: citedPassageIds,
-          retrieved_pages: context.map((p) => p.pageNo),
+          retrieved_pages: contextPages.map((p) => p.pageNo),
+          selection: selection ? { page: selection.page } : undefined,
         },
         status: "answered",
         error: null,
@@ -213,16 +214,6 @@ export async function answerQuestion(
       throw new Error(updateError?.message ?? "Could not save the answer");
     }
 
-    if (run) {
-      await supabase
-        .from("processing_runs")
-        .update({
-          status: "done",
-          usage: { ...usage },
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", run.id);
-    }
     return answered;
   } catch (error) {
     return await fail(error instanceof Error ? error.message : String(error));

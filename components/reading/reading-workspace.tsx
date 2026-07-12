@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  ExternalLink,
   FileText,
   MapPin,
   PanelLeftClose,
@@ -17,19 +16,18 @@ import { AnnotationComposer } from "@/components/reading/annotation-composer";
 import { AnnotationItem } from "@/components/reading/annotation-item";
 import { FormulaOcrDialog } from "@/components/reading/formula-ocr-dialog";
 import { NotesPanel } from "@/components/reading/notes-panel";
+import { PdfNavProvider } from "@/components/reading/pdf-nav-context";
+import {
+  PdfViewer,
+  type PdfSelectionEvent,
+  type PdfViewerHandle,
+} from "@/components/reading/pdf-viewer";
 import {
   QuickConceptDialog,
   QuickMisconceptionDialog,
 } from "@/components/reading/quick-create-dialogs";
+import { SelectionActions } from "@/components/reading/selection-actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -52,19 +50,6 @@ interface Props {
 }
 
 const LAYOUT_ID = "ra:reading-layout:v4";
-const ZOOM_OPTIONS = [
-  { value: "fit", label: "Fit width" },
-  { value: "100", label: "100%" },
-  { value: "125", label: "125%" },
-  { value: "150", label: "150%" },
-  { value: "175", label: "175%" },
-  { value: "200", label: "200%" },
-] as const;
-
-interface PdfState {
-  page: number;
-  zoom: string;
-}
 
 /**
  * Reading workspace v3. The primary paper dominates the centre; structured
@@ -96,23 +81,6 @@ function useIsDesktop(): boolean {
   );
 }
 
-function loadPdfState(paperId: string): PdfState {
-  const fallback: PdfState = { page: 1, zoom: "fit" };
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(`ra:pdf-state:${paperId}`);
-    if (!raw) return fallback;
-    const stored = JSON.parse(raw) as Partial<PdfState>;
-    return {
-      page: typeof stored.page === "number" && stored.page >= 1 ? stored.page : fallback.page,
-      zoom: typeof stored.zoom === "string" ? stored.zoom : fallback.zoom,
-    };
-  } catch {
-    // Corrupt local state — defaults are fine.
-    return fallback;
-  }
-}
-
 export function ReadingWorkspace({
   paperId,
   pdfSrc,
@@ -125,18 +93,19 @@ export function ReadingWorkspace({
   const mounted = useMounted();
   const isDesktop = useIsDesktop();
 
-  // PDF viewer state, persisted per paper. Lazy init is safe: nothing below
-  // renders PDF state until after mount (the skeleton is shown server-side).
-  const [pdf, setPdf] = useState<PdfState>(() => loadPdfState(paperId));
-  const [pdfNonce, setPdfNonce] = useState(0);
+  // The PDF viewer owns its own page/zoom state and persistence; the workspace
+  // only needs to drive navigation (passage jumps, Q&A citations).
+  const viewerRef = useRef<PdfViewerHandle>(null);
+  const goToPage = useCallback((page: number) => viewerRef.current?.goToPage(page), []);
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(`ra:pdf-state:${paperId}`, JSON.stringify(pdf));
-    } catch {
-      // Storage full/blocked — reading state is a nicety, not critical.
-    }
-  }, [pdf, paperId]);
+  // Live PDF text selection -> floating research actions. Frozen while a
+  // selection-driven composer is open so focusing it doesn't clear the target.
+  const [selection, setSelection] = useState<PdfSelectionEvent | null>(null);
+  const composerOpenRef = useRef(false);
+  const handleSelection = useCallback((next: PdfSelectionEvent | null) => {
+    if (composerOpenRef.current) return;
+    setSelection(next);
+  }, []);
 
   const byPassage = useMemo(() => {
     const map = new Map<string, PaperAnnotationRow[]>();
@@ -166,9 +135,7 @@ export function ReadingWorkspace({
 
   function jumpTo(passage: PaperPassageRow) {
     if (!passage.page_start) return;
-    setPdf((prev) => ({ ...prev, page: passage.page_start! }));
-    // Changing only the src fragment doesn't reload the viewer; nonce forces it.
-    setPdfNonce((n) => n + 1);
+    goToPage(passage.page_start);
   }
 
   function clickShouldStayInCard(target: EventTarget | null): boolean {
@@ -303,136 +270,40 @@ export function ReadingWorkspace({
     );
   }
 
-  if (!isDesktop) {
-    return (
-      <MobileWorkspace
-        pdfSrc={pdfSrc}
-        pdf={pdf}
-        pdfNonce={pdfNonce}
-        notesPanel={notesPanel}
-        assistantRail={assistantRail}
-        formulaTool={makeFormulaTool()}
-      />
-    );
-  }
-
-  return (
-    <DesktopWorkspace
-      pdfSrc={pdfSrc}
-      pdf={pdf}
-      setPdf={setPdf}
-      bumpNonce={() => setPdfNonce((n) => n + 1)}
-      pdfNonce={pdfNonce}
-      notesPanel={notesPanel}
-      assistantRail={assistantRail}
-      formulaTool={makeFormulaTool()}
+  const viewer = pdfSrc ? (
+    <PdfViewer
+      ref={viewerRef}
+      src={pdfSrc}
+      paperId={paperId}
+      toolbarExtra={makeFormulaTool()}
+      onSelectionChange={handleSelection}
     />
-  );
-}
-
-function pdfUrl(pdfSrc: string, pdf: PdfState): string {
-  // pagemode=none keeps the viewer's thumbnail sidebar closed (pdf.js);
-  // Chromium's viewer has no sidebar and ignores unknown params.
-  const zoomPart = pdf.zoom === "fit" ? "zoom=page-width" : `zoom=${pdf.zoom}`;
-  return `${pdfSrc}#page=${pdf.page}&pagemode=none&${zoomPart}`;
-}
-
-function PdfPane({
-  pdfSrc,
-  pdf,
-  setPdf,
-  bumpNonce,
-  pdfNonce,
-  formulaTool,
-}: {
-  pdfSrc: string;
-  pdf: PdfState;
-  setPdf?: React.Dispatch<React.SetStateAction<PdfState>>;
-  bumpNonce?: () => void;
-  pdfNonce: number;
-  formulaTool?: React.ReactNode;
-}) {
-  const [pageDraft, setPageDraft] = useState(String(pdf.page));
-  // Adjust-during-render: keep the draft in sync when the page changes
-  // externally (e.g. a passage jump) without an effect.
-  const [prevPage, setPrevPage] = useState(pdf.page);
-  if (prevPage !== pdf.page) {
-    setPrevPage(pdf.page);
-    setPageDraft(String(pdf.page));
-  }
-
-  function commitPage() {
-    const n = Number.parseInt(pageDraft, 10);
-    if (setPdf && Number.isFinite(n) && n >= 1) {
-      setPdf((prev) => ({ ...prev, page: n }));
-      bumpNonce?.();
-    } else {
-      setPageDraft(String(pdf.page));
-    }
-  }
+  ) : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border">
-      <div className="flex items-center gap-2 border-b bg-muted/40 px-2 py-1">
-        <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="text-[11px] text-muted-foreground max-sm:hidden">Primary paper</span>
-        {setPdf ? (
-          <>
-            <label className="ml-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-              p.
-              <Input
-                value={pageDraft}
-                onChange={(e) => setPageDraft(e.target.value)}
-                onBlur={commitPage}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitPage();
-                }}
-                inputMode="numeric"
-                aria-label="Jump to page"
-                className="h-6 w-12 px-1.5 text-center text-xs"
-              />
-            </label>
-            <Select
-              value={pdf.zoom}
-              onValueChange={(zoom) => {
-                setPdf((prev) => ({ ...prev, zoom }));
-                bumpNonce?.();
-              }}
-            >
-              <SelectTrigger
-                size="sm"
-                aria-label="Zoom"
-                className="h-6 w-28 border-none bg-transparent px-1.5 text-xs shadow-none"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ZOOM_OPTIONS.map((z) => (
-                  <SelectItem key={z.value} value={z.value}>
-                    {z.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </>
-        ) : null}
-        {formulaTool ? <div className="ml-1">{formulaTool}</div> : null}
-        <a
-          href={pdfSrc}
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          Open in tab <ExternalLink className="size-3" />
-        </a>
-      </div>
-      <iframe
-        key={`${pdf.page}-${pdf.zoom}-${pdfNonce}`}
-        src={pdfUrl(pdfSrc, pdf)}
-        title="Paper PDF"
-        className="h-full w-full flex-1 bg-neutral-100 dark:bg-neutral-900"
-      />
-    </div>
+    <PdfNavProvider goToPage={goToPage}>
+      {isDesktop ? (
+        <DesktopWorkspace
+          viewer={viewer}
+          hasPdf={Boolean(pdfSrc)}
+          notesPanel={notesPanel}
+          assistantRail={assistantRail}
+        />
+      ) : (
+        <MobileWorkspace viewer={viewer} notesPanel={notesPanel} assistantRail={assistantRail} />
+      )}
+      {pdfSrc ? (
+        <SelectionActions
+          paperId={paperId}
+          selection={selection}
+          aiEnabled={aiEnabled}
+          onOpenChange={(open) => {
+            composerOpenRef.current = open;
+          }}
+          onDone={() => setSelection(null)}
+        />
+      ) : null}
+    </PdfNavProvider>
   );
 }
 
@@ -459,23 +330,15 @@ function loadHiddenPanels(): HiddenPanels {
 }
 
 function DesktopWorkspace({
-  pdfSrc,
-  pdf,
-  setPdf,
-  bumpNonce,
-  pdfNonce,
+  viewer,
+  hasPdf,
   notesPanel,
   assistantRail,
-  formulaTool,
 }: {
-  pdfSrc: string | null;
-  pdf: PdfState;
-  setPdf: React.Dispatch<React.SetStateAction<PdfState>>;
-  bumpNonce: () => void;
-  pdfNonce: number;
+  viewer: React.ReactNode;
+  hasPdf: boolean;
   notesPanel: React.ReactNode;
   assistantRail: React.ReactNode;
-  formulaTool: React.ReactNode;
 }) {
   const notesRef = usePanelRef();
   const railRef = usePanelRef();
@@ -541,10 +404,10 @@ function DesktopWorkspace({
   // Drag positions persist via the library's layout cache; hidden state has
   // its own key so content can unmount when a panel is closed.
   const { defaultLayout: storedLayout, onLayoutChanged } = useDefaultLayout({
-    id: pdfSrc ? LAYOUT_ID : `${LAYOUT_ID}:no-pdf`,
+    id: hasPdf ? LAYOUT_ID : `${LAYOUT_ID}:no-pdf`,
     storage: window.localStorage,
     onlySaveAfterUserInteractions: true,
-    panelIds: pdfSrc ? ["notes", "pdf", "rail"] : ["notes", "rail"],
+    panelIds: hasPdf ? ["notes", "pdf", "rail"] : ["notes", "rail"],
   });
 
   return (
@@ -559,7 +422,7 @@ function DesktopWorkspace({
 
       <Group
         orientation="horizontal"
-        defaultLayout={storedLayout ?? initialLayout(pdfSrc, hidden)}
+        defaultLayout={storedLayout ?? initialLayout(hasPdf, hidden)}
         onLayoutChanged={onLayoutChanged}
         className="min-h-0 flex-1"
       >
@@ -576,17 +439,10 @@ function DesktopWorkspace({
           {hidden.notes ? null : <div className="h-full overflow-y-auto pr-1">{notesPanel}</div>}
         </Panel>
         <Separator className={separatorClass} />
-        {pdfSrc ? (
+        {hasPdf ? (
           <>
             <Panel id="pdf" defaultSize="52%" minSize="40%" className="h-full min-w-0">
-              <PdfPane
-                pdfSrc={pdfSrc}
-                pdf={pdf}
-                setPdf={setPdf}
-                bumpNonce={bumpNonce}
-                pdfNonce={pdfNonce}
-                formulaTool={formulaTool}
-              />
+              {viewer}
             </Panel>
             <Separator className={separatorClass} />
           </>
@@ -594,16 +450,16 @@ function DesktopWorkspace({
         <Panel
           id="rail"
           collapsible
-          defaultSize={hidden.rail ? "0%" : pdfSrc ? "26%" : "58%"}
-          minSize={pdfSrc ? "22%" : "34%"}
-          maxSize={pdfSrc ? "38%" : "82%"}
+          defaultSize={hidden.rail ? "0%" : hasPdf ? "26%" : "58%"}
+          minSize={hasPdf ? "22%" : "34%"}
+          maxSize={hasPdf ? "38%" : "82%"}
           panelRef={railRef}
           onResize={syncFromResize("rail")}
           className="h-full min-w-0 overflow-hidden"
         >
           {hidden.rail ? null : (
             <div className="h-full overflow-y-auto pl-1 pr-0.5">
-              {!pdfSrc ? (
+              {!hasPdf ? (
                 <p className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <FileText className="size-3.5" /> No PDF source available — add a PDF URL via
                   “Edit metadata” to read side-by-side.
@@ -619,8 +475,8 @@ function DesktopWorkspace({
 }
 
 /** First-visit pane split (no stored layout yet): hidden panels start at 0. */
-function initialLayout(pdfSrc: string | null, hidden: HiddenPanels): Record<string, number> {
-  if (!pdfSrc) {
+function initialLayout(hasPdf: boolean, hidden: HiddenPanels): Record<string, number> {
+  if (!hasPdf) {
     return { notes: hidden.notes ? 0 : 42, rail: hidden.rail ? 0 : 58 };
   }
   const notes = hidden.notes ? 0 : 22;
@@ -629,24 +485,18 @@ function initialLayout(pdfSrc: string | null, hidden: HiddenPanels): Record<stri
 }
 
 function MobileWorkspace({
-  pdfSrc,
-  pdf,
-  pdfNonce,
+  viewer,
   notesPanel,
   assistantRail,
-  formulaTool,
 }: {
-  pdfSrc: string | null;
-  pdf: PdfState;
-  pdfNonce: number;
+  viewer: React.ReactNode;
   notesPanel: React.ReactNode;
   assistantRail: React.ReactNode;
-  formulaTool: React.ReactNode;
 }) {
   return (
-    <Tabs defaultValue={pdfSrc ? "paper" : "assistant"}>
+    <Tabs defaultValue={viewer ? "paper" : "assistant"}>
       <TabsList className="w-full">
-        {pdfSrc ? (
+        {viewer ? (
           <TabsTrigger value="paper" className="flex-1">
             Paper
           </TabsTrigger>
@@ -658,11 +508,9 @@ function MobileWorkspace({
           Notes
         </TabsTrigger>
       </TabsList>
-      {pdfSrc ? (
+      {viewer ? (
         <TabsContent value="paper">
-          <div className={cn("h-[calc(100dvh-14rem)] min-h-[420px]")}>
-            <PdfPane pdfSrc={pdfSrc} pdf={pdf} pdfNonce={pdfNonce} formulaTool={formulaTool} />
-          </div>
+          <div className={cn("h-[calc(100dvh-14rem)] min-h-[420px]")}>{viewer}</div>
         </TabsContent>
       ) : null}
       <TabsContent value="assistant">{assistantRail}</TabsContent>

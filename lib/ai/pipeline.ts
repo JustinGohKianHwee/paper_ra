@@ -31,11 +31,30 @@ const STAGE_PASSAGES = "passages";
 const STAGE_NOTES = "notes";
 const STAGE_SUGGESTIONS = "suggestions";
 
-const MAX_RUNS_PER_HOUR = Number(process.env.AI_MAX_RUNS_PER_HOUR ?? 10);
+/**
+ * Ingestion and interactive Q&A are different workloads with different cost
+ * profiles, so they get independent hourly budgets — a burst of questions
+ * while reading must never exhaust the (more expensive) paper-processing
+ * allowance, and vice versa. Ingestion is counted from `processing_runs`
+ * (multi-stage jobs only); Q&A is counted from `paper_qa` rows. Limits are
+ * read at call time so they can be tuned (and tested) without a rebuild.
+ */
+const DEFAULT_INGESTION_MAX_PER_HOUR = 10;
+const DEFAULT_QA_MAX_PER_HOUR = 60;
 /** Cap LLM work per paper regardless of PDF length (~8 chunks ≈ 50 pages of dense text). */
 const MAX_CHUNKS = 8;
 
-export class RateLimitError extends Error {}
+export type RateLimitWorkload = "ingestion" | "qa";
+
+export class RateLimitError extends Error {
+  constructor(
+    message: string,
+    readonly workload: RateLimitWorkload
+  ) {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
 
 export interface PipelineResult {
   runId: string;
@@ -61,8 +80,8 @@ export async function runPaperPipeline(
     .single();
   if (paperError || !paper) throw new Error(paperError?.message ?? "Paper not found");
 
-  // Rate limit: protects the OpenAI budget and outbound fetch volume.
-  await assertWithinRunLimit(supabase);
+  // Ingestion rate limit: protects the OpenAI budget and outbound fetch volume.
+  await assertIngestionWithinLimit(supabase);
 
   // Resume the latest failed run when there is one; otherwise start fresh.
   const { data: lastRun } = await supabase
@@ -369,17 +388,40 @@ function clampPage(page: number, total: number): number {
   return Math.min(Math.round(page), Math.max(total, 1));
 }
 
-/** Shared with grounded Q&A: same budget protects the same OpenAI key. */
-export async function assertWithinRunLimit(supabase: Client): Promise<void> {
-  const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
+const ONE_HOUR_MS = 3600_000;
+
+/**
+ * Ingestion budget — counts multi-stage paper-processing jobs (`processing_runs`)
+ * in the last hour. Q&A does NOT write here, so it cannot consume this budget.
+ */
+export async function assertIngestionWithinLimit(supabase: Client): Promise<void> {
+  const limit = Number(process.env.AI_MAX_RUNS_PER_HOUR ?? DEFAULT_INGESTION_MAX_PER_HOUR);
+  const oneHourAgo = new Date(Date.now() - ONE_HOUR_MS).toISOString();
   const { count } = await supabase
     .from("processing_runs")
     .select("id", { count: "exact", head: true })
     .gte("created_at", oneHourAgo);
-  if ((count ?? 0) >= MAX_RUNS_PER_HOUR) {
+  if ((count ?? 0) >= limit) {
     throw new RateLimitError(
-      `Processing limit reached (${MAX_RUNS_PER_HOUR}/hour). Try again later.`
+      `Paper-processing limit reached (${limit}/hour). Try again later.`,
+      "ingestion"
     );
+  }
+}
+
+/**
+ * Q&A budget — counts questions asked (`paper_qa` rows) in the last hour, so a
+ * reading session's questions are throttled independently of paper processing.
+ */
+export async function assertQaWithinLimit(supabase: Client): Promise<void> {
+  const limit = Number(process.env.QA_MAX_PER_HOUR ?? DEFAULT_QA_MAX_PER_HOUR);
+  const oneHourAgo = new Date(Date.now() - ONE_HOUR_MS).toISOString();
+  const { count } = await supabase
+    .from("paper_qa")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", oneHourAgo);
+  if ((count ?? 0) >= limit) {
+    throw new RateLimitError(`Question limit reached (${limit}/hour). Try again later.`, "qa");
   }
 }
 

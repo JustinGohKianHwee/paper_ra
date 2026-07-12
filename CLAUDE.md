@@ -53,12 +53,22 @@ The reading page is a reader-first, three-pane workspace. Structure:
   pixels — always pass percentage strings (`"22%"`, `"52%"`, `"26%"`) or side panes render
   as slivers. Desktop defaults notes `22%` / PDF `52%` / rail `26%` (mins `18%`/`40%`/`22%`);
   desktop mode starts at `1280px`, below which the panes become tabs.
-- Passage cards are page-linked: clicking a passage header or non-interactive card space
-  calls `jumpTo(passage)` (reloads the PDF iframe at `page_start`); interactive controls
-  inside the card do not jump. The PDF fragment is
-  `#page=<n>&pagemode=none&zoom=page-width` (fit) or `zoom=<value>` (numeric).
+- The PDF is a **pdf.js viewer** (`components/reading/pdf-viewer.tsx`, `react-pdf`), not an
+  iframe: the document loads once, pages render lazily around the viewport, and navigation
+  is imperative (`goToPage`, no remount). It exposes a `PdfViewerHandle` ref; passage cards,
+  Q&A citations, and annotation "return to source" navigate through `PdfNavContext`
+  (`usePdfNav()`, null outside reading mode). The pdf.js worker is served from
+  `public/pdf.worker.min.mjs` (vendored by `scripts/setup-pdf-worker.mjs` on
+  postinstall/predev/prebuild; git-ignored) — never a CDN. The viewer is client-only and
+  renders after mount, so it never executes during SSR.
+- **Selection is a research action**: the text layer feeds `onSelectionChange`; a floating
+  toolbar (`components/reading/selection-actions.tsx`) offers "Ask about this" (→ a
+  `question` annotation + `askAboutSelection`) and "Create note" (→ a `note` annotation).
+  Provenance (`page_number`, `selected_text`, `anchor`) lives on `paper_annotations`. Keep
+  `onMouseDown` preventDefault on the toolbar so clicking it doesn't clear the selection.
 - Client-side hydration flags (mounted, media query) use `useSyncExternalStore`, never
-  `useState` + effect — the react-hooks lint forbids setState-in-effect.
+  `useState` + effect — the react-hooks lint forbids setState-in-effect, and refs may not be
+  read or written during render.
 - **Formula OCR** (`components/reading/formula-ocr-dialog.tsx`, exposed from the PDF
   toolbar and rail): the user pastes or uploads an equation screenshot and drag-crops it;
   `recognizeFormula` (`actions/formula-ocr.ts`) sends it once to OpenAI vision
@@ -92,10 +102,18 @@ confidence, warnings}`. The image is validated (png/jpg/webp data URL) and never
 - The app must remain fully usable with no OpenAI key (AI features disabled gracefully).
 - Tests never call the real API: use `tests/mocks/openai-server.mjs` via `OPENAI_BASE_URL`
   (it also serves a mock arXiv Atom feed for Radar via `ARXIV_BASE_URL`).
+- **Ingestion and Q&A have separate hourly budgets** — never share one. Ingestion counts
+  `processing_runs` (`assertIngestionWithinLimit`, `AI_MAX_RUNS_PER_HOUR`); Q&A counts
+  `paper_qa` rows (`assertQaWithinLimit`, `QA_MAX_PER_HOUR`). Q&A must **not** write
+  `processing_runs` rows — that table is ingestion jobs only; the Q&A audit lives on the
+  `paper_qa` row. `RateLimitError` carries a `workload` and a message naming the limit.
 - **Grounded Q&A** answers only from retrieved `paper_pages` text
   (`lib/ai/qa-retrieval.ts` is pure/lexical — no vectors); answers must separate direct
-  paper claims from interpretation, cite pages, admit "insufficient" coverage, and are
-  audited as `processing_runs` rows with stage `qa` under the same rate limit.
+  paper claims from interpretation, cite pages, and admit "insufficient" coverage. A
+  **selected passage** (from PDF text selection) is passed through as **primary evidence**
+  and always cited — retrieval only supplements it, never re-derives it. Keep retrieval
+  behind `selectContext` so a future hybrid lexical+vector retriever can replace it without
+  touching the selection interaction or prompt shape (semantic retrieval is a later stage).
 - **Radar** builds no stored interest profile: every refresh re-derives one from the
   library. Metadata + abstracts only — never download/summarise candidate PDFs.
   Deterministic scoring first; at most one LLM call per refresh (top slice

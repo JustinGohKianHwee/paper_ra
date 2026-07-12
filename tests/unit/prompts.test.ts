@@ -98,6 +98,34 @@ describe("prompt builders", () => {
     expect(system).toContain("180-300 words");
   });
 
+  it("frames a selected passage as primary evidence in Q&A", () => {
+    const withSelection = buildQaPrompt({
+      paperTitle: "T",
+      question: "Why is this different from ordinary self-attention?",
+      contextPages: [{ pageNo: 5, content: "Some retrieved context." }],
+      passageIndex: "- Method (pp. 4-6)",
+      priorThread: [],
+      primarySelection: { text: "candidate-aware attention weights the target item", page: 4 },
+    });
+    // The selection is presented as PRIMARY EVIDENCE with its page.
+    expect(withSelection.user).toContain("PRIMARY EVIDENCE");
+    expect(withSelection.user).toContain("candidate-aware attention weights the target item");
+    expect(withSelection.user).toContain("p. 4");
+    // The system prompt tells the model to treat it as the main subject.
+    expect(withSelection.system).toContain("selected a specific passage");
+
+    // Without a selection, none of that framing appears.
+    const without = buildQaPrompt({
+      paperTitle: "T",
+      question: "What is the mechanism?",
+      contextPages: [{ pageNo: 1, content: "ctx" }],
+      passageIndex: "",
+      priorThread: [],
+    });
+    expect(without.user).not.toContain("PRIMARY EVIDENCE");
+    expect(without.system).not.toContain("selected a specific passage");
+  });
+
   it("asks Markdown-producing prompts to format equations as KaTeX math", () => {
     const passages = buildPassagesPrompt({
       paperTitle: "T",

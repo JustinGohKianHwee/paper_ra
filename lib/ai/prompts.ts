@@ -357,7 +357,10 @@ export function buildQaPrompt(options: {
   contextPages: { pageNo: number; content: string }[];
   passageIndex: string;
   priorThread: { question: string; answer: string }[];
+  /** The exact passage the user selected in the PDF, if this question came from a selection. */
+  primarySelection?: { text: string; page: number } | null;
 }): { system: string; user: string } {
+  const hasSelection = Boolean(options.primarySelection);
   const system = [
     "You answer a researcher's question about a specific paper, using ONLY the retrieved pages provided below.",
     UNTRUSTED_PREAMBLE,
@@ -369,6 +372,11 @@ export function buildQaPrompt(options: {
     "- Never invent numbers, equations, citations, or content from general knowledge about the paper.",
     "- If the provided pages do not contain enough information, say so plainly, set coverage to 'insufficient', and suggest where in the paper the answer might live if the section list hints at it.",
     "- cited_pages must list only pages you actually used.",
+    ...(hasSelection
+      ? [
+          "- The user selected a specific passage (shown as PRIMARY EVIDENCE). Treat it as the main subject of the question; the retrieved pages are supporting context. Always cite the selection's page.",
+        ]
+      : []),
   ].join("\n");
 
   const thread =
@@ -380,6 +388,15 @@ export function buildQaPrompt(options: {
         ]
       : [];
 
+  const selection = options.primarySelection
+    ? [
+        `----- BEGIN PRIMARY EVIDENCE (passage the user selected on p. ${options.primarySelection.page}) -----`,
+        options.primarySelection.text,
+        "----- END PRIMARY EVIDENCE -----",
+        "",
+      ]
+    : [];
+
   const user = [
     `Paper: ${options.paperTitle}`,
     "",
@@ -387,6 +404,7 @@ export function buildQaPrompt(options: {
     options.passageIndex || "(none)",
     "",
     ...thread,
+    ...selection,
     "----- BEGIN UNTRUSTED RETRIEVED PAGES -----",
     ...options.contextPages.map((p) => `[page ${p.pageNo}]\n${p.content}`),
     "----- END UNTRUSTED RETRIEVED PAGES -----",

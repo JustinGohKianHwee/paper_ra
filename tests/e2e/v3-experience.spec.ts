@@ -50,7 +50,9 @@ test("reading workspace: panels, in-place notes, grounded Q&A, then trash → re
   await expect(page).toHaveURL(/\/read$/);
 
   // PDF pane (dominant centre) and both side panes are present.
-  await expect(page.locator("iframe[title='Paper PDF']")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("pdf-viewer")).toBeVisible({ timeout: 20_000 });
+  // pdf.js actually rendered a page (canvas + text layer), not just a container.
+  await expect(page.locator(".react-pdf__Page").first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText("Essence")).toBeVisible(); // notes panel group
   await expect(page.getByText("Whole-paper notes")).toBeVisible(); // assistant rail
 
@@ -79,14 +81,45 @@ test("reading workspace: panels, in-place notes, grounded Q&A, then trash → re
   // Answer arrives with provenance: AI badge, coverage, cited pages, editable.
   await expect(page.getByText("mock-qa-marker")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("grounded in paper")).toBeVisible();
-  await expect(page.getByText(/cites p\./)).toBeVisible();
+  // Cited pages render as clickable navigation buttons (return-to-source).
+  await expect(page.getByRole("button", { name: /^p\. \d/ }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Follow-up" })).toBeVisible();
+
+  // --- Selection-driven note from the PDF text layer ---------------------------
+  // Programmatically select real text-layer content and settle it with mouseup,
+  // exercising the viewer's selection pipeline without brittle pixel dragging.
+  const selected = await page.evaluate(() => {
+    const layer = document.querySelector(".react-pdf__Page__textContent");
+    const span = layer?.querySelector("span");
+    if (!span || !span.textContent?.trim()) return null;
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const scroller = document.querySelector<HTMLElement>(
+      '[data-testid="pdf-viewer"] .overflow-auto'
+    );
+    scroller?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    return span.textContent.trim();
+  });
+  expect(selected).toBeTruthy();
+  // The floating selection toolbar appears; capture the passage as a note.
+  await expect(page.getByRole("button", { name: "Note", exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.getByRole("button", { name: "Note", exact: true }).click();
+  await expect(page.getByText(/Note captured from p\./)).toBeVisible({ timeout: 15_000 });
+  // The note carries a return-to-source page anchor in the assistant rail.
+  await expect(page.getByRole("button", { name: /^p\. \d+$/ }).first()).toBeVisible({
+    timeout: 15_000,
+  });
 
   // --- Collapse the notes panel; the preference survives a reload ---------------
   await page.getByRole("button", { name: "Hide structured notes" }).click();
   await expect(page.getByText("Essence")).not.toBeVisible();
   await page.reload();
-  await expect(page.locator("iframe[title='Paper PDF']")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("pdf-viewer")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Show structured notes" })).toBeVisible();
   await expect(page.getByText("Essence")).not.toBeVisible();
   await page.getByRole("button", { name: "Show structured notes" }).click();

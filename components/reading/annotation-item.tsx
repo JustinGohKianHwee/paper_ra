@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { CheckCircle2, Circle, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, MapPin, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteAnnotation, updateAnnotation } from "@/actions/annotations";
 import { MarkdownView } from "@/components/markdown-view";
+import { usePdfNav } from "@/components/reading/pdf-nav-context";
 import { QaThread } from "@/components/reading/qa-thread";
 import { KindBadge } from "@/components/status-badges";
 import type { PaperAnnotationRow, PaperQaRow } from "@/lib/supabase/database.types";
@@ -22,6 +23,7 @@ export function AnnotationItem({
   aiEnabled?: boolean;
 }) {
   const router = useRouter();
+  const goToPage = usePdfNav();
   const [pending, startTransition] = useTransition();
 
   function toggleResolved() {
@@ -55,6 +57,16 @@ export function AnnotationItem({
             month: "short",
           })}
         </span>
+        {annotation.page_number && goToPage ? (
+          <button
+            type="button"
+            onClick={() => goToPage(annotation.page_number!)}
+            className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+            title="Return to source in the PDF"
+          >
+            <MapPin className="size-3" aria-hidden /> p. {annotation.page_number}
+          </button>
+        ) : null}
         <div className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {annotation.kind === "question" ? (
             <button
@@ -84,6 +96,11 @@ export function AnnotationItem({
           </button>
         </div>
       </div>
+      {annotation.selected_text && annotation.kind === "question" ? (
+        <p className="mt-1 line-clamp-2 border-l-2 border-muted-foreground/30 pl-2 text-[11px] italic text-muted-foreground">
+          “{annotation.selected_text}”
+        </p>
+      ) : null}
       <div className="mt-1">
         <MarkdownView markdown={annotation.body_md} />
       </div>

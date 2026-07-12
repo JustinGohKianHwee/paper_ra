@@ -6,3 +6,4 @@ supabase/.temp
 docs/source
 playwright-report
 test-results
+public/pdf.worker.min.mjs

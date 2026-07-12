@@ -43,13 +43,20 @@ export async function askAi(input: unknown): Promise<QaActionResult> {
 
   const { data: annotation } = await supabase
     .from("paper_annotations")
-    .select("id, paper_id, kind, body_md")
+    .select("id, paper_id, kind, body_md, selected_text, page_number")
     .eq("id", parsed.data.annotation_id)
     .maybeSingle();
   if (!annotation) return { ok: false, error: "Annotation not found" };
   if (annotation.kind !== "question") {
     return { ok: false, error: "Only question annotations can be answered" };
   }
+
+  // If this question came from a selected passage, that passage is primary
+  // context for the whole thread (including follow-ups).
+  const primarySelection =
+    annotation.selected_text && annotation.page_number
+      ? { text: annotation.selected_text, page: annotation.page_number }
+      : null;
 
   const { data: last } = await supabase
     .from("paper_qa")
@@ -89,6 +96,7 @@ export async function askAi(input: unknown): Promise<QaActionResult> {
       annotationId: annotation.id,
       question,
       position,
+      primarySelection,
     });
     revalidatePath("/papers");
     if (qa.status === "failed") {
@@ -98,6 +106,77 @@ export async function askAi(input: unknown): Promise<QaActionResult> {
   } catch (error) {
     if (error instanceof RateLimitError) return { ok: false, error: error.message };
     return { ok: false, error: error instanceof Error ? error.message : "Answering failed" };
+  }
+}
+
+const askSelectionSchema = z.object({
+  paper_id: z.string().uuid(),
+  passage_id: z.string().uuid().optional().nullable(),
+  question: z.string().trim().min(3, "Ask a question about the passage").max(4000),
+  selected_text: z.string().trim().min(1).max(10000),
+  page_number: z.number().int().min(1),
+});
+
+/**
+ * "Ask about this" from a PDF text selection: records a question annotation
+ * carrying the selection as provenance, then answers it with the selected
+ * passage as primary evidence. One atomic call so the reader stays in flow.
+ */
+export async function askAboutSelection(
+  input: unknown
+): Promise<QaActionResult & { annotationId?: string }> {
+  const parsed = askSelectionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  if (!aiEnabled()) {
+    return { ok: false, error: "AI answering is not configured (OPENAI_API_KEY missing)." };
+  }
+  const { supabase, user } = await requireUser();
+
+  const { data: annotation, error: insertError } = await supabase
+    .from("paper_annotations")
+    .insert({
+      user_id: user.id,
+      paper_id: parsed.data.paper_id,
+      passage_id: parsed.data.passage_id ?? null,
+      kind: "question",
+      body_md: parsed.data.question,
+      selected_text: parsed.data.selected_text,
+      page_number: parsed.data.page_number,
+      anchor: { page: parsed.data.page_number, quote: { exact: parsed.data.selected_text } },
+    })
+    .select("id")
+    .single();
+  if (insertError || !annotation) {
+    return { ok: false, error: insertError?.message ?? "Could not record the question" };
+  }
+
+  try {
+    const qa = await answerQuestion(supabase, user.id, {
+      paperId: parsed.data.paper_id,
+      annotationId: annotation.id,
+      question: parsed.data.question,
+      position: 1,
+      primarySelection: {
+        text: parsed.data.selected_text,
+        page: parsed.data.page_number,
+      },
+    });
+    revalidatePath("/papers");
+    if (qa.status === "failed") {
+      return { ok: false, error: qa.error ?? "Answering failed", qa, annotationId: annotation.id };
+    }
+    return { ok: true, qa, annotationId: annotation.id };
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { ok: false, error: error.message, annotationId: annotation.id };
+    }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Answering failed",
+      annotationId: annotation.id,
+    };
   }
 }
 

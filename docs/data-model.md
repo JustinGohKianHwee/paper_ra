@@ -112,3 +112,24 @@ Changed in v3:
   searches the dormant `experiments` feature (data retained; union branch restorable).
 - Status _definitions_ are centralised in `lib/statuses.ts` (labels stay in
   `lib/validation/enums.ts`); badges, tooltips, filters, and forms all read from it.
+
+## v4 additions (PDF reading foundation, selection provenance, split budgets)
+
+Changed in v4:
+
+- `paper_annotations`: `page_number`, `selected_text`, `anchor jsonb` — provenance for
+  notes/questions created from PDF text selection. `selected_text` is the exact selected
+  passage (used as **primary** Q&A grounding context, never re-derived by retrieval);
+  `anchor` = `{ page, quote: { exact, prefix, suffix } }`, an extensible text-quote anchor
+  stored now so future exact-range highlighting needs no migration (see AD-27). A
+  selection question is an ordinary `question` annotation (Q&A threads under it); a
+  selection note is a `note` annotation — one model, no parallel tables.
+- `paper_qa.grounding` now also records `selection: { page }` when the answer was grounded
+  in a selected passage. No column change (grounding is jsonb).
+- `processing_runs` is **ingestion-only**: Q&A stopped writing run rows (its audit —
+  model, prompt_version, coverage, cited pages, usage, status, error — already lives on
+  `paper_qa`). Rate limits are split: ingestion counts `processing_runs`
+  (`AI_MAX_RUNS_PER_HOUR`), Q&A counts `paper_qa` rows (`QA_MAX_PER_HOUR`). See AD-24.
+
+No columns were removed; existing data is unaffected by the v4 migration
+(`20260712120000_selection_provenance.sql` only adds nullable columns).

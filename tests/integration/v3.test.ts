@@ -219,12 +219,13 @@ describe.skipIf(!up)("v3 integration (trash, grounded Q&A, Radar)", () => {
     expect(grounding.pages.length).toBeGreaterThan(0);
     expect(grounding.retrieved_pages).toContain(2);
 
-    // Audit trail: a processing run with stage "qa".
-    const { data: runs } = await user
+    // Audit lives entirely on the paper_qa row — Q&A is not a processing_runs
+    // job, so it must NOT create one (that would starve the ingestion budget).
+    const { count: runCount } = await user
       .from("processing_runs")
-      .select("stage, status")
+      .select("id", { count: "exact", head: true })
       .eq("paper_id", paper.id);
-    expect(runs!.some((r) => r.stage === "qa" && r.status === "done")).toBe(true);
+    expect(runCount).toBe(0);
 
     // Follow-up lands at position 2 in the same thread.
     const followUp = await answerQuestion(user, userId, {
@@ -259,6 +260,139 @@ describe.skipIf(!up)("v3 integration (trash, grounded Q&A, Radar)", () => {
     });
     expect(qa.status).toBe("failed");
     expect(qa.error).toMatch(/No extracted paper text/i);
+  }, 30000);
+
+  it("uses a selected passage as primary context, even when retrieval matches nothing", async () => {
+    const paper = await createPaper(`Selection QA Paper ${suffix}`);
+    // Page text deliberately shares no vocabulary with the question, so lexical
+    // retrieval alone would find nothing — the selection must carry the answer.
+    await user.from("paper_pages").insert([
+      {
+        user_id: userId,
+        paper_id: paper.id,
+        page_no: 1,
+        content: "Preamble about apples.",
+        char_count: 22,
+      },
+      {
+        user_id: userId,
+        paper_id: paper.id,
+        page_no: 3,
+        content: "Candidate-aware attention reweights the target item embedding.",
+        char_count: 61,
+      },
+    ]);
+    const { data: annotation } = await user
+      .from("paper_annotations")
+      .insert({
+        user_id: userId,
+        paper_id: paper.id,
+        kind: "question",
+        body_md: "Why is this different from ordinary self-attention?",
+        selected_text: "Candidate-aware attention reweights the target item embedding.",
+        page_number: 3,
+        anchor: {
+          page: 3,
+          quote: { exact: "Candidate-aware attention reweights the target item" },
+        },
+      })
+      .select("id, selected_text, page_number")
+      .single();
+
+    // Provenance persisted on the annotation.
+    expect(annotation!.selected_text).toContain("Candidate-aware attention");
+    expect(annotation!.page_number).toBe(3);
+
+    const { answerQuestion } = await import("@/lib/ai/qa");
+    const qa = await answerQuestion(user, userId, {
+      paperId: paper.id,
+      annotationId: annotation!.id,
+      question: "Why is this different from ordinary self-attention?",
+      position: 1,
+      primarySelection: { text: annotation!.selected_text!, page: annotation!.page_number! },
+    });
+
+    // Answered (not the "didn't match any text" failure), and grounding records
+    // the selection + always cites the selected page.
+    expect(qa.status).toBe("answered");
+    const grounding = qa.grounding as {
+      pages: number[];
+      selection?: { page: number };
+    };
+    expect(grounding.selection?.page).toBe(3);
+    expect(grounding.pages).toContain(3);
+  }, 30000);
+
+  // -------------------------------------------------------------------------
+  // Independent ingestion vs Q&A rate-limit budgets
+  // -------------------------------------------------------------------------
+
+  it("keeps ingestion and Q&A budgets independent — neither starves the other", async () => {
+    const { assertIngestionWithinLimit, assertQaWithinLimit, RateLimitError } =
+      await import("@/lib/ai/pipeline");
+
+    const paper = await createPaper(`Rate Limit Paper ${suffix}`);
+    const savedIngestion = process.env.AI_MAX_RUNS_PER_HOUR;
+    const savedQa = process.env.QA_MAX_PER_HOUR;
+
+    try {
+      // --- Q&A history must not consume the ingestion allowance ---------------
+      // Simulate a burst of questions by writing paper_qa rows directly.
+      const { data: annotation } = await user
+        .from("paper_annotations")
+        .insert({ user_id: userId, paper_id: paper.id, kind: "question", body_md: "q?" })
+        .select("id")
+        .single();
+      await user.from("paper_qa").insert(
+        Array.from({ length: 5 }, (_, i) => ({
+          user_id: userId,
+          paper_id: paper.id,
+          annotation_id: annotation!.id,
+          position: i + 1,
+          question_md: `burst ${i}`,
+          status: "answered" as const,
+        }))
+      );
+
+      // Ingestion budget is generous and counts only processing_runs (of which
+      // this user has none), so it is unaffected by the Q&A burst.
+      process.env.AI_MAX_RUNS_PER_HOUR = "10";
+      await expect(assertIngestionWithinLimit(user)).resolves.toBeUndefined();
+
+      // Q&A respects its OWN limit: 5 existing questions >= a limit of 5 -> blocked.
+      process.env.QA_MAX_PER_HOUR = "5";
+      await expect(assertQaWithinLimit(user)).rejects.toMatchObject({
+        name: "RateLimitError",
+        workload: "qa",
+      });
+      // And the error is a RateLimitError, not a generic failure.
+      await assertQaWithinLimit(user).catch((e) => {
+        expect(e).toBeInstanceOf(RateLimitError);
+        expect(String(e.message)).toMatch(/question limit/i);
+      });
+
+      // --- Ingestion history must not consume the Q&A allowance ---------------
+      // A real processing run exists...
+      await user.from("processing_runs").insert({
+        user_id: userId,
+        paper_id: paper.id,
+        status: "done" as const,
+        stage: "passages",
+      });
+      // ...ingestion blocks at a limit of 1...
+      process.env.AI_MAX_RUNS_PER_HOUR = "1";
+      await expect(assertIngestionWithinLimit(user)).rejects.toMatchObject({
+        workload: "ingestion",
+      });
+      // ...but Q&A (generous limit) is unaffected by the ingestion run.
+      process.env.QA_MAX_PER_HOUR = "1000";
+      await expect(assertQaWithinLimit(user)).resolves.toBeUndefined();
+    } finally {
+      if (savedIngestion === undefined) delete process.env.AI_MAX_RUNS_PER_HOUR;
+      else process.env.AI_MAX_RUNS_PER_HOUR = savedIngestion;
+      if (savedQa === undefined) delete process.env.QA_MAX_PER_HOUR;
+      else process.env.QA_MAX_PER_HOUR = savedQa;
+    }
   }, 30000);
 
   // -------------------------------------------------------------------------

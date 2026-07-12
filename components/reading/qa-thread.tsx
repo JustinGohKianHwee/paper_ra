@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { askAi, deleteQa, updateQaAnswer } from "@/actions/qa";
 import { AiBadge } from "@/components/ai-badge";
 import { MarkdownView } from "@/components/markdown-view";
+import { usePdfNav } from "@/components/reading/pdf-nav-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -154,6 +155,7 @@ export function QaThread({
 
 function QaItem({ row, onRetry }: { row: PaperQaRow; onRetry: () => void }) {
   const router = useRouter();
+  const goToPage = usePdfNav();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(row.answer_md ?? "");
@@ -216,8 +218,27 @@ function QaItem({ row, onRetry }: { row: PaperQaRow; onRetry: () => void }) {
               </Badge>
             ) : null}
             {citedPages.length > 0 ? (
-              <span className="text-[10px] text-muted-foreground">
-                cites p. {citedPages.join(", ")}
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                cites
+                {citedPages.map((p, i) =>
+                  goToPage ? (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => goToPage(p)}
+                      className="underline-offset-2 hover:text-foreground hover:underline"
+                      title={`Go to page ${p}`}
+                    >
+                      p. {p}
+                      {i < citedPages.length - 1 ? "," : ""}
+                    </button>
+                  ) : (
+                    <span key={p}>
+                      p. {p}
+                      {i < citedPages.length - 1 ? "," : ""}
+                    </span>
+                  )
+                )}
               </span>
             ) : null}
             <span className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover/qa:opacity-100">

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/setup-pdf-worker.mjs",
+    "predev": "node scripts/setup-pdf-worker.mjs",
+    "prebuild": "node scripts/setup-pdf-worker.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -33,6 +36,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
+    "react-pdf": "^10.4.1",
     "react-resizable-panels": "^4.12.1",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
