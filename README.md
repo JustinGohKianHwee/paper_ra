@@ -134,18 +134,26 @@ The PDF viewer loads its pdf.js worker from `public/pdf.worker.min.mjs`, which
 
 ### Everyday commands
 
-| Command                                 | What it does                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                           | Dev server                                                             |
-| `npm run seed`                          | Idempotent, non-destructive seed                                       |
-| `npm run db:reset`                      | Recreate the DB from migrations (wipes data)                           |
-| `npm run test`                          | Unit tests (no Supabase/OpenAI needed)                                 |
-| `npm run test:integration`              | CRUD/RLS/search/pipeline tests (local Supabase + built-in OpenAI mock) |
-| `npm run test:e2e`                      | Playwright flows (local Supabase + built-in OpenAI mock — no API cost) |
-| `npm run lint` / `typecheck` / `format` | Hygiene                                                                |
+| Command                                 | What it does                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run dev`                           | Dev server                                                                                                                     |
+| `npm run seed`                          | Idempotent, non-destructive seed (metadata + notes; **no** LLM calls)                                                          |
+| `npm run backfill`                      | Run every un-processed paper through the real AI pipeline (needs a real `OPENAI_API_KEY`; costs a few cents/paper; idempotent) |
+| `npm run db:reset`                      | Recreate the DB from migrations (wipes data)                                                                                   |
+| `npm run test`                          | Unit tests (no Supabase/OpenAI needed)                                                                                         |
+| `npm run test:integration`              | CRUD/RLS/search/pipeline tests (local Supabase + built-in OpenAI mock)                                                         |
+| `npm run test:e2e`                      | Playwright flows (local Supabase + built-in OpenAI mock — no API cost)                                                         |
+| `npm run lint` / `typecheck` / `format` | Hygiene                                                                                                                        |
 
 After changing migrations: `npx supabase db reset && npm run seed`, then regenerate types
 with `npx supabase gen types typescript --local > lib/supabase/database.gen.ts`.
+
+Seeding is metadata + hand-authored notes only (deterministic, no LLM calls). To also
+populate AI passage summaries, extracted page text, AI note drafts, and suggestions for the
+seeded papers, run **`npm run backfill`** once with a real `OPENAI_API_KEY` set — it processes
+every un-processed paper through the same pipeline as the "Process" button. It targets
+whatever `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` point at (local by default;
+set the cloud values to backfill a deployed database) and skips papers already processed.
 
 ## AI processing details
 

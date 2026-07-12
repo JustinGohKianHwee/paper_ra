@@ -18,6 +18,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "seed": "tsx seed/index.ts",
+    "backfill": "vitest run tests/manual/backfill.test.ts",
     "db:reset": "supabase db reset"
   },
   "dependencies": {
