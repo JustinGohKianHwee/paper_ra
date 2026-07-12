@@ -29,6 +29,8 @@ interface Props {
   headingId?: string;
   /** AI provenance of the current content; editing AI content marks it edited. */
   authorship?: NoteAuthorship;
+  /** Compact embedded use, e.g. reading-mode side panes. */
+  dense?: boolean;
 }
 
 function formatTimestamp(iso: string): string {
@@ -55,6 +57,7 @@ export function SectionEditor({
   placeholder,
   headingId,
   authorship = "human",
+  dense = false,
 }: Props) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
@@ -222,9 +225,12 @@ export function SectionEditor({
               void doSave();
             }}
             placeholder={placeholder ?? hint}
-            aria-label={heading}
+            aria-label={heading || hint || "Section content"}
             spellCheck={false}
-            className="min-h-24 font-mono text-[13px] leading-relaxed field-sizing-content max-h-[36rem]"
+            className={cn(
+              "min-h-24 font-mono field-sizing-content max-h-[36rem]",
+              dense ? "text-xs leading-snug" : "text-[13px] leading-relaxed"
+            )}
           />
           {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
           {error ? (

@@ -33,6 +33,22 @@
   @apply text-sm;
 }
 
+/* Reading mode panes are intentionally denser than full-page note surfaces. */
+.reading-pane .prose-notes {
+  @apply text-[13px] leading-snug prose-p:my-1.5 prose-li:my-0.5
+    prose-ul:my-1.5 prose-ol:my-1.5 prose-headings:my-1.5
+    prose-h1:text-base prose-h2:text-sm prose-h3:text-[13px];
+}
+
+.reading-pane .prose-notes p,
+.reading-pane .prose-notes li {
+  line-height: 1.45;
+}
+
+.reading-pane .prose-qa strong {
+  @apply text-violet-700 dark:text-violet-300;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

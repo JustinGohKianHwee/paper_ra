@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { PaperListCompact, PaperListDetailed } from "@/components/papers/paper-list";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,15 @@ export default async function PapersPage({
   const filters = parsePaperFilters(params);
 
   const supabase = await createClient();
-  const [library, topicsRes] = await Promise.all([
+  const [library, topicsRes, trashRes] = await Promise.all([
     fetchPaperLibrary(supabase),
     supabase.from("topics").select("name, slug").order("name"),
+    supabase
+      .from("papers")
+      .select("id", { count: "exact", head: true })
+      .not("deleted_at", "is", null),
   ]);
+  const trashCount = trashRes.count ?? 0;
 
   const { organisations, years } = facetValues(library);
   const visible = sortPapers(filterPapers(library, filters), filters.sort);
@@ -36,11 +41,20 @@ export default async function PapersPage({
             {library.length} paper{library.length === 1 ? "" : "s"} in your library
           </p>
         </div>
-        <Button asChild size="sm">
-          <Link href="/papers/new">
-            <Plus className="size-4" /> Add paper
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {trashCount > 0 ? (
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+              <Link href="/papers/trash">
+                <Trash2 className="size-4" /> Trash ({trashCount})
+              </Link>
+            </Button>
+          ) : null}
+          <Button asChild size="sm">
+            <Link href="/papers/new">
+              <Plus className="size-4" /> Add paper
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <FilterBar

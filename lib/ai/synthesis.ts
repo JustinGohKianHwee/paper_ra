@@ -32,6 +32,7 @@ export async function collectPeriodActivity(
       supabase
         .from("papers")
         .select("title, reading_status, updated_at")
+        .is("deleted_at", null)
         .gte("updated_at", startIso)
         .lt("updated_at", endIso)
         .order("updated_at", { ascending: false })

@@ -28,6 +28,9 @@ export type ReadingSessionRow = Tables["reading_sessions"]["Row"];
 export type SynthesisNoteRow = Tables["synthesis_notes"]["Row"];
 export type SourceRow = Tables["sources"]["Row"];
 export type RadarCandidateRow = Tables["radar_candidates"]["Row"];
+export type PaperPageRow = Tables["paper_pages"]["Row"];
+export type PaperQaRow = Tables["paper_qa"]["Row"];
+export type RadarRunRow = Tables["radar_runs"]["Row"];
 
 export type ReadingStatus = Enums["reading_status"];
 export type VerificationStatus = Enums["verification_status"];
@@ -43,5 +46,7 @@ export type AnnotationKind = Enums["annotation_kind"];
 export type RunStatus = Enums["run_status"];
 export type SuggestionKind = Enums["suggestion_kind"];
 export type SuggestionStatus = Enums["suggestion_status"];
+export type QaStatus = Enums["qa_status"];
+export type QaCoverage = Enums["qa_coverage"];
 
 export type SearchAllResult = PublicSchema["Functions"]["search_all"]["Returns"][number];

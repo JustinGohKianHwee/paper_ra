@@ -1,7 +1,16 @@
 /** Shared shape of `search_all` results + client-side helpers. */
 
 export interface SearchResult {
-  kind: "paper" | "paper_note" | "concept" | "experiment" | "misconception" | "synthesis";
+  // "experiment" stays for the dormant feature's old links; search_all no
+  // longer returns it.
+  kind:
+    | "paper"
+    | "paper_note"
+    | "annotation"
+    | "concept"
+    | "experiment"
+    | "misconception"
+    | "synthesis";
   id: string;
   title: string;
   slug: string;
@@ -15,6 +24,7 @@ export interface SearchResult {
 export const SEARCH_KIND_LABELS: Record<SearchResult["kind"], string> = {
   paper: "Paper",
   paper_note: "Paper note",
+  annotation: "Reading note",
   concept: "Concept",
   experiment: "Experiment",
   misconception: "Misconception",
@@ -43,6 +53,7 @@ export function searchResultHref(r: Pick<SearchResult, "kind" | "slug" | "id">):
   switch (r.kind) {
     case "paper":
     case "paper_note":
+    case "annotation":
       return `/papers/${r.slug}`;
     case "concept":
       return `/concepts/${r.slug}`;

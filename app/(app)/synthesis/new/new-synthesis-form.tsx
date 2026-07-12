@@ -110,8 +110,8 @@ export function NewSynthesisForm({ aiEnabled }: { aiEnabled: boolean }) {
       </div>
       {aiEnabled ? (
         <p className="text-[11px] text-muted-foreground">
-          The AI draft is built only from this period&apos;s recorded activity (papers, sessions, notes,
-          questions, misconceptions, concepts, experiments). You review and edit it before
+          The AI draft is built only from this period&apos;s recorded activity (papers, sessions,
+          notes, questions, misconceptions, concepts, experiments). You review and edit it before
           approving; the original draft is kept alongside your version.
         </p>
       ) : null}

@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ExplainedBadge } from "@/components/explained-badge";
+import { KNOWLEDGE_OBJECTS } from "@/lib/knowledge-objects";
 import {
-  EXPERIMENT_STATUS_LABELS,
-  READING_STATUS_LABELS,
-  VERIFICATION_STATUS_LABELS,
-  type ExperimentStatus,
-  type ReadingStatus,
-  type VerificationStatus,
-} from "@/lib/validation/enums";
+  READING_STATUS_INFO,
+  VERIFICATION_STATUS_INFO,
+  experimentStatusLabel,
+} from "@/lib/statuses";
+import type { ExperimentStatus, ReadingStatus, VerificationStatus } from "@/lib/validation/enums";
 import { cn } from "@/lib/utils";
 
 export function ReadingStatusBadge({ status }: { status: ReadingStatus }) {
@@ -17,31 +16,34 @@ export function ReadingStatusBadge({ status }: { status: ReadingStatus }) {
     implemented: "border-emerald-600/40 text-emerald-700 dark:text-emerald-400",
     revisit: "border-amber-600/40 text-amber-700 dark:text-amber-400",
   };
+  const info = READING_STATUS_INFO[status];
   return (
-    <Badge variant="outline" className={cn("font-normal", emphasis[status])}>
-      {READING_STATUS_LABELS[status]}
-    </Badge>
+    <ExplainedBadge
+      label={info.label}
+      description={info.description}
+      className={emphasis[status]}
+    />
   );
 }
 
 export function VerificationBadge({ status }: { status: VerificationStatus }) {
   const verified = status === "primary_claims_verified";
   const warned = status === "metadata_only" || status === "secondary_summary_only";
+  const info = VERIFICATION_STATUS_INFO[status];
   return (
-    <Badge
-      variant="outline"
+    <ExplainedBadge
+      label={info.label}
+      description={info.description}
       className={cn(
-        "font-normal gap-1",
         verified && "border-emerald-600/40 text-emerald-700 dark:text-emerald-400",
         warned && "border-amber-600/40 text-amber-700 dark:text-amber-400"
       )}
-    >
-      {warned ? <AlertTriangle className="size-3" aria-hidden /> : null}
-      {VERIFICATION_STATUS_LABELS[status]}
-    </Badge>
+      warnIcon={warned}
+    />
   );
 }
 
+/** Dormant feature — badge kept for existing experiment records. */
 export function ExperimentStatusBadge({ status }: { status: ExperimentStatus }) {
   const emphasis: Partial<Record<ExperimentStatus, string>> = {
     running: "border-blue-600/40 text-blue-700 dark:text-blue-400",
@@ -50,7 +52,7 @@ export function ExperimentStatusBadge({ status }: { status: ExperimentStatus }) 
   };
   return (
     <Badge variant="outline" className={cn("font-normal", emphasis[status])}>
-      {EXPERIMENT_STATUS_LABELS[status]}
+      {experimentStatusLabel(status)}
     </Badge>
   );
 }
@@ -78,11 +80,51 @@ export function PriorityDots({ value, label = "Priority" }: { value: number; lab
 }
 
 export function TopicBadge({ name, slug }: { name: string; slug: string }) {
+  const style = KNOWLEDGE_OBJECTS.topic;
+  const Icon = style.icon;
   return (
     <Link href={`/topics/${slug}`}>
-      <Badge variant="secondary" className="font-normal hover:bg-secondary/70">
+      <Badge
+        variant="outline"
+        className={cn("gap-1 font-normal hover:bg-blue-500/10", style.badgeClass)}
+      >
+        <Icon className="size-3" aria-hidden />
         {name}
       </Badge>
     </Link>
+  );
+}
+
+export function ConceptBadge({ name, slug }: { name: string; slug: string }) {
+  const style = KNOWLEDGE_OBJECTS.concept;
+  const Icon = style.icon;
+  return (
+    <Link href={`/concepts/${slug}`}>
+      <Badge
+        variant="outline"
+        className={cn("gap-1 font-normal hover:bg-teal-500/10", style.badgeClass)}
+      >
+        <Icon className="size-3" aria-hidden />
+        {name}
+      </Badge>
+    </Link>
+  );
+}
+
+/** Small labelled badge for an annotation/knowledge-object kind. */
+export function KindBadge({
+  kind,
+  className,
+}: {
+  kind: keyof typeof KNOWLEDGE_OBJECTS;
+  className?: string;
+}) {
+  const style = KNOWLEDGE_OBJECTS[kind];
+  const Icon = style.icon;
+  return (
+    <Badge variant="outline" className={cn("gap-1 font-normal", style.badgeClass, className)}>
+      <Icon className="size-3" aria-hidden />
+      {style.label}
+    </Badge>
   );
 }

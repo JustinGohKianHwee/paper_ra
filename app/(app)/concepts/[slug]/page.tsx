@@ -6,43 +6,76 @@ import { PrivacyReminder } from "@/components/privacy-reminder";
 import { SectionEditor } from "@/components/section-editor";
 import { ReadingStatusBadge } from "@/components/status-badges";
 import { Separator } from "@/components/ui/separator";
+import { KNOWLEDGE_OBJECTS } from "@/lib/knowledge-objects";
 import { createClient } from "@/lib/supabase/server";
+import type { ReadingStatus } from "@/lib/validation/enums";
+import { cn } from "@/lib/utils";
 
-const CONCEPT_FIELDS: { field: ConceptField; heading: string; hint: string }[] = [
+const conceptStyle = KNOWLEDGE_OBJECTS.concept;
+const ConceptIcon = conceptStyle.icon;
+
+/**
+ * Reference-entry structure: definition first, then mechanism, behaviour,
+ * and personal notes — like a textbook glossary entry you keep improving.
+ */
+const REFERENCE_GROUPS: {
+  label: string;
+  fields: { field: ConceptField; heading: string; hint: string }[];
+}[] = [
   {
-    field: "plain_definition_md",
-    heading: "Plain-language definition",
-    hint: "Explain it to a colleague outside ML.",
+    label: "Definition",
+    fields: [
+      {
+        field: "plain_definition_md",
+        heading: "Plain-language definition",
+        hint: "Explain it to a colleague outside ML.",
+      },
+      {
+        field: "technical_definition_md",
+        heading: "Technical definition",
+        hint: "The precise version, with the terms of art.",
+      },
+    ],
   },
   {
-    field: "technical_definition_md",
-    heading: "Technical definition",
-    hint: "The precise version, with the terms of art.",
+    label: "Mechanism",
+    fields: [
+      {
+        field: "equation_md",
+        heading: "Equation or pseudocode",
+        hint: "KaTeX ($$ … $$) or a fenced code block.",
+      },
+      {
+        field: "why_it_helps_md",
+        heading: "Why it helps / applications",
+        hint: "The property it exploits; when it beats the alternative.",
+      },
+    ],
   },
   {
-    field: "equation_md",
-    heading: "Equation or pseudocode",
-    hint: "KaTeX ($$ … $$) or a fenced code block.",
+    label: "Behaviour",
+    fields: [
+      {
+        field: "failure_modes_md",
+        heading: "Failure modes",
+        hint: "Where it breaks, degrades, or gets misapplied.",
+      },
+    ],
   },
   {
-    field: "why_it_helps_md",
-    heading: "Why it helps",
-    hint: "The property it exploits; when it beats the alternative.",
-  },
-  {
-    field: "failure_modes_md",
-    heading: "Failure modes",
-    hint: "Where it breaks, degrades, or gets misapplied.",
-  },
-  {
-    field: "my_implementations_md",
-    heading: "My implementations",
-    hint: "Personal repos/branches only — never internal code.",
-  },
-  {
-    field: "misconceptions_md",
-    heading: "Misconceptions I had",
-    hint: "What you got wrong about it; also record big ones as Misconception entries.",
+    label: "My notes",
+    fields: [
+      {
+        field: "my_implementations_md",
+        heading: "My implementations",
+        hint: "Personal repos/branches only — never internal code.",
+      },
+      {
+        field: "misconceptions_md",
+        heading: "Misconceptions I had",
+        hint: "What you got wrong about it; also record big ones as Misconception entries.",
+      },
+    ],
   },
 ];
 
@@ -68,14 +101,10 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     .maybeSingle();
   if (!concept) notFound();
 
-  const [paperLinks, experimentLinks, misconceptions] = await Promise.all([
+  const [paperLinks, misconceptions] = await Promise.all([
     supabase
       .from("paper_concepts")
-      .select("papers(id, title, slug, reading_status)")
-      .eq("concept_id", concept.id),
-    supabase
-      .from("experiment_concepts")
-      .select("experiments(id, title, slug, status)")
+      .select("papers(id, title, slug, reading_status, deleted_at)")
       .eq("concept_id", concept.id),
     supabase
       .from("misconception_corrections")
@@ -91,45 +120,52 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           id: string;
           title: string;
           slug: string;
-          reading_status: string;
+          reading_status: ReadingStatus;
+          deleted_at: string | null;
         } | null
     )
-    .filter((p): p is NonNullable<typeof p> => p !== null)
+    .filter((p): p is NonNullable<typeof p> => p !== null && !p.deleted_at)
     .sort((a, b) => a.title.localeCompare(b.title));
-
-  const experiments = (experimentLinks.data ?? [])
-    .map(
-      (l) =>
-        l.experiments as unknown as {
-          id: string;
-          title: string;
-          slug: string;
-          status: string;
-        } | null
-    )
-    .filter((e): e is NonNullable<typeof e> => e !== null);
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-xl font-semibold tracking-tight">{concept.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          Used in {papers.length} paper{papers.length === 1 ? "" : "s"}
-        </p>
+        <div className="flex items-start gap-2.5">
+          <ConceptIcon className={cn("mt-1 size-5 shrink-0", conceptStyle.textClass)} aria-hidden />
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-xl font-semibold tracking-tight">{concept.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              Technical reference entry · used in {papers.length} paper
+              {papers.length === 1 ? "" : "s"}
+            </p>
+          </div>
+        </div>
         <PrivacyReminder />
       </header>
 
       <div className="space-y-6">
-        {CONCEPT_FIELDS.map(({ field, heading, hint }) => (
-          <SectionEditor
-            key={field}
-            heading={heading}
-            hint={hint}
-            initialValue={(concept[field] as string | null) ?? ""}
-            lastEditedAt={concept.updated_at}
-            saveAction={saveConceptField.bind(null, concept.id, field)}
-            collapsible
-          />
+        {REFERENCE_GROUPS.map((group) => (
+          <section key={group.label} className="space-y-4">
+            <h2
+              className={cn(
+                "border-b pb-1 text-xs font-semibold uppercase tracking-wide",
+                conceptStyle.textClass
+              )}
+            >
+              {group.label}
+            </h2>
+            {group.fields.map(({ field, heading, hint }) => (
+              <SectionEditor
+                key={field}
+                heading={heading}
+                hint={hint}
+                initialValue={(concept[field] as string | null) ?? ""}
+                lastEditedAt={concept.updated_at}
+                saveAction={saveConceptField.bind(null, concept.id, field)}
+                collapsible
+              />
+            ))}
+          </section>
         ))}
       </div>
 
@@ -152,33 +188,13 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
                   {p.title}
                 </Link>
                 <span className="ml-auto shrink-0">
-                  <ReadingStatusBadge
-                    status={p.reading_status as Parameters<typeof ReadingStatusBadge>[0]["status"]}
-                  />
+                  <ReadingStatusBadge status={p.reading_status} />
                 </span>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      {experiments.length > 0 ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold tracking-tight">Experiments</h2>
-          <ul className="space-y-1">
-            {experiments.map((e) => (
-              <li key={e.id}>
-                <Link
-                  href={`/experiments/${e.slug}`}
-                  className="text-sm hover:underline underline-offset-4"
-                >
-                  {e.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {(misconceptions.data ?? []).length > 0 ? (
         <section className="space-y-2">

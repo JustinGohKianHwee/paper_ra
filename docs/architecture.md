@@ -148,3 +148,97 @@ preamble in every prompt); the UI discloses OpenAI submission (`AI_DISCLOSURE`).
 schema name) give unit/integration/E2E suites full pipeline coverage with zero API
 spend; a gated manual test (`RUN_REAL_AI=1 … tests/manual/real-ai.test.ts`) verifies the
 real integration.
+
+## AD-17: Reading mode is a reader-first, three-pane workspace
+
+Reading mode now uses a dedicated client shell and resizable workspace so the PDF remains
+the primary object while notes and AI structure stay available:
+
+- The authenticated server layout delegates interactive chrome to `components/app-shell.tsx`.
+  The app shell keeps the normal desktop sidebar, mobile header, command palette, theme
+  toggle, and sign-out controls, but lets the desktop sidebar collapse on
+  `/papers/[slug]/read` to reclaim width for the reader.
+- `components/reading/reading-workspace.tsx` owns the three reading panes: structured
+  notes on the left, PDF in the center, and the AI passage/annotation rail on the right.
+  The layout persists as `ra:reading-layout:v4`.
+- `react-resizable-panels` size props must be explicit percentage strings, not bare
+  numbers. Bare numbers are pixels, which previously made the side panes render as
+  unusable slivers. Current defaults are `22% / 52% / 26%`.
+- AI passages remain page-anchored: clicking a passage header or non-interactive card
+  space jumps the PDF iframe to the passage `page_start`; annotation controls and other
+  interactive elements do not trigger the jump.
+
+## AD-18: Formula screenshots convert to copyable KaTeX Markdown
+
+Important equations are often easiest to capture from the PDF visually, but the app's
+canonical note format is still Markdown + KaTeX. Reading mode therefore adds an
+ephemeral formula-OCR tool rather than a new saved object type:
+
+- `components/reading/formula-ocr-dialog.tsx` supports paste, image upload, and browser
+  screen capture (`getDisplayMedia`) followed by an in-dialog crop rectangle.
+- `actions/formula-ocr.ts` validates the image data URL and calls OpenAI with a
+  structured-output prompt that returns raw LaTeX, display-math Markdown, confidence,
+  and warnings.
+- Screenshots are not written to Supabase or Storage. The user explicitly copies the
+  LaTeX/Markdown into important-equation sections, notes, or questions.
+- Cost control: `FORMULA_OCR_MODEL` defaults to `gpt-5.4-nano`; users can override it
+  in `.env.local` if model availability or quality changes.
+
+## AD-19: Papers get a recoverable trash, not hard deletion
+
+Deleting knowledge should be reversible: `papers.deleted_at` implements a soft delete.
+Trashed papers vanish from the library, `search_all` (filtered in SQL), the dashboard,
+the command palette, and Radar dedupe-and-recommend surfaces, but everything attached
+stays intact until "Delete forever" (Postgres cascades then remove passages, notes,
+annotations, Q&A, pages, sessions, sources, suggestions, runs, relations, and links;
+misconception records survive with their paper link nulled; topics/concepts are never
+deleted with a paper). The confirmation dialogs itemise exactly this split.
+
+## AD-20: Grounded Q&A is retrieval-first and shares the pipeline's audit trail
+
+Questions asked while reading are answered from the paper itself, not model memory:
+
+- The extract stage persists page text (`paper_pages`), so Q&A never re-downloads the
+  PDF; older papers are backfilled on their first question.
+- `lib/ai/qa-retrieval.ts` (pure, unit-tested) ranks pages lexically against the
+  question and sends only the top few within a character budget.
+- The prompt forces separation of direct paper claims (cited "(p. N)") from
+  interpretation, and an explicit "insufficient" coverage state when the paper does not
+  contain the answer. Answers carry `answer_authorship` (`ai` → `ai_edited` on edit),
+  coverage, and grounding (cited pages + overlapping passage ids).
+- Every ask is a `processing_runs` row with stage `qa` — same rate limit
+  (`AI_MAX_RUNS_PER_HOUR`) and usage accounting as ingestion. Failures are stored on
+  the `paper_qa` row (status `failed` + error) and retryable.
+- Follow-ups thread under the same question annotation (position 2+), passing only the
+  last few exchanges — never the whole paper again.
+
+## AD-21: Radar v1 infers interests from the library; no stored profile
+
+There is deliberately no interest-profile table. Each user-triggered refresh derives a
+term-weight profile from what the notebook already records: papers weighted by reading
+depth × personal relevance × recency, topic/concept names, recent annotations, and past
+accept (+) / dismiss (−) decisions. arXiv is queried per top topic (metadata + abstracts
+only — candidate PDFs are never downloaded), candidates are deduped against the whole
+library (including trash) and prior candidates, scored deterministically
+(term overlap + recency), and near-duplicate titles are filtered for queue diversity.
+Only the top ~8 survivors get one LLM call for honest per-candidate explanations
+(usage recorded on `radar_runs`; refresh works fully without a key). Accepting creates
+an honest `queued` + `metadata_only` paper linked to the source topics; the generated
+"why" text never becomes canonical notes. A one-off topic search sets `query_context`
+on its candidates and leaves no persistent trace in future profiles. Refresh is
+user-triggered only in v1 — no scheduled jobs.
+
+## AD-22: One source of truth for status semantics and knowledge-object visuals
+
+`lib/statuses.ts` holds the meaning of every reading/verification status (labels stay
+beside the zod enums); badges (tooltips), form selects (inline explanations), filters,
+and the docs read from it, so definitions cannot drift. `lib/knowledge-objects.ts`
+defines the restrained visual language — topic/blue/Tags, concept/teal/Compass,
+question/amber/HelpCircle, misconception+correction/rose, idea/emerald, note/neutral,
+AI/violet/Sparkles — always icon + label + colour, never colour alone.
+
+## AD-23: Experiments is dormant, not deleted
+
+The feature is hidden from navigation, dashboard, command palette, paper view, and
+search (`search_all` union branch removed), but its tables, migrations, records, and
+routes remain (the pages carry a "dormant feature" banner). Restoring it is additive.

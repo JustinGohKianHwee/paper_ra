@@ -46,11 +46,13 @@ test("smart add (PDF) → AI processing → reading session → view mode", asyn
   // --- 2. Processing populates the paper --------------------------------------
   await expect(page).toHaveURL(/\/papers\/fixture-attention/, { timeout: 15_000 });
   // Wait for the mock pipeline to finish (banner disappears, content appears).
-  await expect(page.getByText("Paper breakdown")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Mock Introduction")).toBeVisible();
-  await expect(page.getByText("mock-passage-marker")).toBeVisible();
+  await expect(page.getByText("AI paper breakdown")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("AI-generated").first()).toBeVisible();
   await expect(page.getByText("mock-notes-marker")).toBeVisible();
+  // The breakdown is collapsed by default in view mode — expand to inspect.
+  await page.getByText("AI paper breakdown").click();
+  await expect(page.getByText("Mock Introduction")).toBeVisible();
+  await expect(page.getByText("mock-passage-marker")).toBeVisible();
 
   // --- 3. Review AI suggestions ------------------------------------------------
   await expect(page.getByText("AI suggestions to review")).toBeVisible();
@@ -92,7 +94,9 @@ test("smart add (PDF) → AI processing → reading session → view mode", asyn
   await page
     .getByLabel("Main takeaway (optional)")
     .fill(`Fixture attention is deterministic (${runId}).`);
-  await page.getByLabel("Continue next time (optional)").fill(`Re-check §2 assumptions (${runId}).`);
+  await page
+    .getByLabel("Continue next time (optional)")
+    .fill(`Re-check §2 assumptions (${runId}).`);
   await page.getByRole("button", { name: "End session", exact: true }).last().click();
   await expect(page.getByText(/Session logged/)).toBeVisible({ timeout: 15_000 });
 

@@ -37,6 +37,7 @@ export default defineConfig({
         ...process.env,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || "sk-test-mock",
         OPENAI_BASE_URL: `http://127.0.0.1:${MOCK_OPENAI_PORT}/v1`,
+        ARXIV_BASE_URL: `http://127.0.0.1:${MOCK_OPENAI_PORT}`,
         AI_MAX_RUNS_PER_HOUR: "1000",
       },
     },

@@ -74,15 +74,77 @@ function payloadFor(schemaName, body) {
         draft_md:
           "# What did I learn this week?\nMock synthesis drafted from recorded activity. (mock-synthesis-marker)\n\n# What should I read next?\nMock suggestion based on the open questions.",
       };
+    case "qa_answer":
+      return {
+        answer_md:
+          "The paper states the mock mechanism is defined in the method section (p. 2). **Interpretation:** this mock answer exists to test grounding plumbing. (mock-qa-marker)",
+        cited_pages: [1, 2],
+        coverage: "grounded",
+      };
+    case "formula_ocr":
+      return {
+        latex: "\\hat{y} = \\mathrm{softmax}(W x + b)",
+        display_md: "$$\\hat{y} = \\mathrm{softmax}(W x + b)$$",
+        confidence: "high",
+        warnings: [],
+      };
+    case "radar_explanations": {
+      // Explain every candidate the prompt listed, echoing indices.
+      const userMessage = body.messages?.find((m) => m.role === "user")?.content ?? "";
+      const indices = [...userMessage.matchAll(/^\[(\d+)\] /gm)].map((m) => Number(m[1]));
+      return {
+        items: (indices.length > 0 ? indices : [0]).map((index) => ({
+          index,
+          relevance: 4,
+          why: `Mock explanation: connects to your recorded topics. (mock-radar-marker-${index})`,
+        })),
+      };
+    }
     default:
       return { error: `Unknown schema ${schemaName}` };
   }
+}
+
+/**
+ * Deterministic arXiv Atom feed for Radar tests. Titles vary with the query
+ * so dedupe/diversity logic sees distinct candidates; two entries share a
+ * near-identical title to exercise the diversity filter.
+ */
+function arxivFeedFor(searchQuery) {
+  const topic = decodeURIComponent(searchQuery ?? "mock topic")
+    .replace(/all:|"/g, "")
+    .trim();
+  const slugPart = topic
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 24);
+  const entry = (n, title) => `
+  <entry>
+    <id>http://arxiv.org/abs/9901.0000${n}v1</id>
+    <title>${title}</title>
+    <summary>Mock abstract about ${topic}: transformer-style sequence modelling for recommendation with production evidence. (mock-arxiv-${slugPart})</summary>
+    <published>2026-07-01T00:00:00Z</published>
+    <author><name>Mock Author</name></author>
+    <author><name>Second Author</name></author>
+  </entry>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  ${entry(1, `Mock Advances in ${topic} at Scale`)}
+  ${entry(2, `A Mock Survey of ${topic} Methods`)}
+  ${entry(3, `Mock Advances in ${topic} at Scale v2 Duplicate`)}
+</feed>`;
 }
 
 export function createMockServer() {
   return http.createServer((req, res) => {
     if (req.method === "GET" && req.url?.endsWith("/health")) {
       res.writeHead(200, { "content-type": "application/json" }).end('{"ok":true}');
+      return;
+    }
+    if (req.method === "GET" && req.url?.includes("/api/query")) {
+      const url = new URL(req.url, "http://localhost");
+      res.writeHead(200, { "content-type": "application/atom+xml" });
+      res.end(arxivFeedFor(url.searchParams.get("search_query") ?? ""));
       return;
     }
     if (!req.url?.endsWith("/chat/completions") || req.method !== "POST") {

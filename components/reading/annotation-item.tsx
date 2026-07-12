@@ -6,25 +6,21 @@ import { CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteAnnotation, updateAnnotation } from "@/actions/annotations";
 import { MarkdownView } from "@/components/markdown-view";
-import { Badge } from "@/components/ui/badge";
-import type { PaperAnnotationRow } from "@/lib/supabase/database.types";
+import { QaThread } from "@/components/reading/qa-thread";
+import { KindBadge } from "@/components/status-badges";
+import type { PaperAnnotationRow, PaperQaRow } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
-export const ANNOTATION_KIND_LABELS: Record<string, string> = {
-  note: "Note",
-  question: "Question",
-  correction: "Correction",
-  idea: "Idea",
-};
-
-const KIND_STYLES: Record<string, string> = {
-  note: "",
-  question: "border-blue-500/40 text-blue-700 dark:text-blue-400",
-  correction: "border-red-500/40 text-red-700 dark:text-red-400",
-  idea: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
-};
-
-export function AnnotationItem({ annotation }: { annotation: PaperAnnotationRow }) {
+export function AnnotationItem({
+  annotation,
+  qa = [],
+  aiEnabled = false,
+}: {
+  annotation: PaperAnnotationRow;
+  /** Grounded Q&A thread (question annotations only). */
+  qa?: PaperQaRow[];
+  aiEnabled?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -48,14 +44,11 @@ export function AnnotationItem({ annotation }: { annotation: PaperAnnotationRow 
   }
 
   return (
-    <div className={cn("group rounded-md border px-3 py-2", annotation.resolved && "opacity-60")}>
+    <div
+      className={cn("group rounded-md border px-2.5 py-1.5", annotation.resolved && "opacity-60")}
+    >
       <div className="flex items-center gap-2">
-        <Badge
-          variant="outline"
-          className={cn("font-normal text-[10px]", KIND_STYLES[annotation.kind])}
-        >
-          {ANNOTATION_KIND_LABELS[annotation.kind] ?? annotation.kind}
-        </Badge>
+        <KindBadge kind={annotation.kind} className="text-[10px]" />
         <span className="text-[11px] text-muted-foreground">
           {new Date(annotation.created_at).toLocaleDateString(undefined, {
             day: "numeric",
@@ -94,6 +87,9 @@ export function AnnotationItem({ annotation }: { annotation: PaperAnnotationRow 
       <div className="mt-1">
         <MarkdownView markdown={annotation.body_md} />
       </div>
+      {annotation.kind === "question" ? (
+        <QaThread annotationId={annotation.id} qa={qa} aiEnabled={aiEnabled} />
+      ) : null}
       {annotation.kind === "question" && annotation.resolved ? (
         <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">resolved</p>
       ) : null}

@@ -27,6 +27,10 @@ export default async function ExperimentsPage() {
 
   return (
     <div className="space-y-4">
+      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        Experiments is a dormant feature: it is hidden from navigation and ordinary workflows, but
+        your records below are intact and this page keeps working until the feature returns.
+      </p>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Experiments</h1>

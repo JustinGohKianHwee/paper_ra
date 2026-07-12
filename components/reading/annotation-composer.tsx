@@ -78,7 +78,7 @@ export function AnnotationComposer({
   const placeholder = KINDS.find((k) => k.value === kind)?.placeholder;
 
   return (
-    <div className="space-y-2 rounded-md border px-3 py-2">
+    <div className="space-y-1.5 rounded-md border px-2.5 py-2">
       <div className="flex items-center gap-2">
         <Select value={kind} onValueChange={(v) => setKind(v as AnnotationKind)}>
           <SelectTrigger className="h-7 w-32" size="sm" aria-label="Annotation type">
@@ -92,7 +92,7 @@ export function AnnotationComposer({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-[11px] text-muted-foreground">Markdown supported</span>
+        <span className="text-[10.5px] text-muted-foreground">Markdown supported</span>
       </div>
       <Textarea
         value={body}
@@ -100,7 +100,7 @@ export function AnnotationComposer({
         placeholder={placeholder}
         rows={3}
         autoFocus
-        className="font-mono text-[13px]"
+        className="font-mono text-xs leading-snug"
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();

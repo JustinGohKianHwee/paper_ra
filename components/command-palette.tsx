@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, FlaskConical, Lightbulb, Notebook, Plus, Tags } from "lucide-react";
+import { BookOpen, Lightbulb, Notebook, Plus, Tags } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -114,9 +114,6 @@ export function CommandPalette({ topics }: Props) {
             </CommandItem>
             <CommandItem onSelect={() => go("/misconceptions/new")}>
               <Lightbulb /> Record misconception
-            </CommandItem>
-            <CommandItem onSelect={() => go("/experiments/new")}>
-              <FlaskConical /> Record experiment
             </CommandItem>
             <CommandItem onSelect={() => go("/synthesis/new")}>
               <Notebook /> New synthesis note

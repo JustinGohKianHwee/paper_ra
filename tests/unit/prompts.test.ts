@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   AI_NOTE_SECTIONS,
+  MARKDOWN_MATH_RULE,
   NOTES_JSON_SCHEMA,
   UNTRUSTED_PREAMBLE,
   buildNotesPrompt,
   buildPassagesPrompt,
+  buildQaPrompt,
   buildSuggestionsPrompt,
   buildSynthesisPrompt,
 } from "@/lib/ai/prompts";
@@ -82,5 +84,51 @@ describe("prompt builders", () => {
     });
     expect(user).toContain("Cold Start; Calibration");
     expect(user).toContain("Memory banks");
+  });
+
+  it("keeps grounded Q&A answers concise", () => {
+    const { system } = buildQaPrompt({
+      paperTitle: "T",
+      question: "What is the mechanism?",
+      contextPages: [{ pageNo: 1, content: "The mechanism is described here." }],
+      passageIndex: "- Method (pp. 1-2)",
+      priorThread: [],
+    });
+    expect(system).toContain("Keep answers concise");
+    expect(system).toContain("180-300 words");
+  });
+
+  it("asks Markdown-producing prompts to format equations as KaTeX math", () => {
+    const passages = buildPassagesPrompt({
+      paperTitle: "T",
+      chunkText: "Equation: y = Wx",
+      chunkPageStart: 1,
+      chunkPageEnd: 1,
+      isFirstChunk: true,
+    });
+    const notes = buildNotesPrompt({
+      paperTitle: "T",
+      abstract: null,
+      passageSummaries: "The paper defines y = Wx.",
+    });
+    const qa = buildQaPrompt({
+      paperTitle: "T",
+      question: "What is the equation?",
+      contextPages: [{ pageNo: 1, content: "The paper defines y = Wx." }],
+      passageIndex: "- Method (p. 1)",
+      priorThread: [],
+    });
+    const synthesis = buildSynthesisPrompt({
+      kind: "weekly",
+      periodStart: "2026-07-06",
+      activity: "Used $y = Wx$ in notes.",
+      templateQuestions: "What equations mattered?",
+    });
+
+    for (const prompt of [passages, notes, qa, synthesis]) {
+      expect(prompt.system).toContain(MARKDOWN_MATH_RULE);
+      expect(prompt.system).toContain("KaTeX-compatible LaTeX");
+      expect(prompt.system).toContain("display `$$...$$`");
+    }
   });
 });

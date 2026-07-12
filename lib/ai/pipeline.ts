@@ -62,16 +62,7 @@ export async function runPaperPipeline(
   if (paperError || !paper) throw new Error(paperError?.message ?? "Paper not found");
 
   // Rate limit: protects the OpenAI budget and outbound fetch volume.
-  const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
-  const { count } = await supabase
-    .from("processing_runs")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", oneHourAgo);
-  if ((count ?? 0) >= MAX_RUNS_PER_HOUR) {
-    throw new RateLimitError(
-      `Processing limit reached (${MAX_RUNS_PER_HOUR}/hour). Try again later.`
-    );
-  }
+  await assertWithinRunLimit(supabase);
 
   // Resume the latest failed run when there is one; otherwise start fresh.
   const { data: lastRun } = await supabase
@@ -136,6 +127,11 @@ export async function runPaperPipeline(
     // ---- full text (always re-derived; cheap relative to LLM stages) -------
     await setPaperStatus("extracting");
     const pages = await loadPaperPages(supabase, paper);
+    // Persist page text so grounded Q&A can retrieve context later without
+    // re-downloading the PDF. Replaced wholesale on every (re)process.
+    if (pages.length > 0) {
+      await persistPaperPages(supabase, userId, paperId, pages);
+    }
 
     // ---- passages ----------------------------------------------------------
     if (!stagesCompleted.includes(STAGE_PASSAGES)) {
@@ -373,12 +369,47 @@ function clampPage(page: number, total: number): number {
   return Math.min(Math.round(page), Math.max(total, 1));
 }
 
+/** Shared with grounded Q&A: same budget protects the same OpenAI key. */
+export async function assertWithinRunLimit(supabase: Client): Promise<void> {
+  const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await supabase
+    .from("processing_runs")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", oneHourAgo);
+  if ((count ?? 0) >= MAX_RUNS_PER_HOUR) {
+    throw new RateLimitError(
+      `Processing limit reached (${MAX_RUNS_PER_HOUR}/hour). Try again later.`
+    );
+  }
+}
+
+/** Replaces the stored per-page text extraction for a paper. */
+export async function persistPaperPages(
+  supabase: Client,
+  userId: string,
+  paperId: string,
+  pages: string[]
+): Promise<void> {
+  await supabase.from("paper_pages").delete().eq("paper_id", paperId);
+  const rows = pages.map((content, i) => ({
+    user_id: userId,
+    paper_id: paperId,
+    page_no: i + 1,
+    content,
+    char_count: content.length,
+  }));
+  for (let i = 0; i < rows.length; i += 50) {
+    const { error } = await supabase.from("paper_pages").insert(rows.slice(i, i + 50));
+    if (error) throw new Error(`Saving extracted pages failed: ${error.message}`);
+  }
+}
+
 /**
  * Locates and extracts the paper's full text. Sources, in order: uploaded
  * attachment (source_input "storage:<path>"), explicit pdf_url, arXiv PDF.
  * Returns [] when no source is available (pipeline degrades to abstract-only).
  */
-async function loadPaperPages(
+export async function loadPaperPages(
   supabase: Client,
   paper: { source_input: string | null; pdf_url: string | null; arxiv_id: string | null }
 ): Promise<string[]> {

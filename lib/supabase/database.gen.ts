@@ -444,6 +444,44 @@ export type Database = {
           },
         ];
       };
+      paper_pages: {
+        Row: {
+          char_count: number;
+          content: string;
+          created_at: string;
+          id: string;
+          page_no: number;
+          paper_id: string;
+          user_id: string;
+        };
+        Insert: {
+          char_count?: number;
+          content: string;
+          created_at?: string;
+          id?: string;
+          page_no: number;
+          paper_id: string;
+          user_id: string;
+        };
+        Update: {
+          char_count?: number;
+          content?: string;
+          created_at?: string;
+          id?: string;
+          page_no?: number;
+          paper_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "paper_pages_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       paper_passages: {
         Row: {
           ai_model: string | null;
@@ -490,6 +528,84 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "paper_passages_paper_id_fkey";
+            columns: ["paper_id"];
+            isOneToOne: false;
+            referencedRelation: "papers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      paper_qa: {
+        Row: {
+          annotation_id: string;
+          answer_authorship: Database["public"]["Enums"]["note_authorship"];
+          answer_md: string | null;
+          coverage: Database["public"]["Enums"]["qa_coverage"] | null;
+          created_at: string;
+          error: string | null;
+          grounding: Json | null;
+          id: string;
+          model: string | null;
+          paper_id: string;
+          position: number;
+          prompt_version: string | null;
+          question_md: string;
+          status: Database["public"]["Enums"]["qa_status"];
+          updated_at: string;
+          usage: Json | null;
+          user_id: string;
+          visibility: Database["public"]["Enums"]["visibility"];
+        };
+        Insert: {
+          annotation_id: string;
+          answer_authorship?: Database["public"]["Enums"]["note_authorship"];
+          answer_md?: string | null;
+          coverage?: Database["public"]["Enums"]["qa_coverage"] | null;
+          created_at?: string;
+          error?: string | null;
+          grounding?: Json | null;
+          id?: string;
+          model?: string | null;
+          paper_id: string;
+          position?: number;
+          prompt_version?: string | null;
+          question_md: string;
+          status?: Database["public"]["Enums"]["qa_status"];
+          updated_at?: string;
+          usage?: Json | null;
+          user_id: string;
+          visibility?: Database["public"]["Enums"]["visibility"];
+        };
+        Update: {
+          annotation_id?: string;
+          answer_authorship?: Database["public"]["Enums"]["note_authorship"];
+          answer_md?: string | null;
+          coverage?: Database["public"]["Enums"]["qa_coverage"] | null;
+          created_at?: string;
+          error?: string | null;
+          grounding?: Json | null;
+          id?: string;
+          model?: string | null;
+          paper_id?: string;
+          position?: number;
+          prompt_version?: string | null;
+          question_md?: string;
+          status?: Database["public"]["Enums"]["qa_status"];
+          updated_at?: string;
+          usage?: Json | null;
+          user_id?: string;
+          visibility?: Database["public"]["Enums"]["visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "paper_qa_annotation_id_fkey";
+            columns: ["annotation_id"];
+            isOneToOne: false;
+            referencedRelation: "paper_annotations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "paper_qa_paper_id_fkey";
             columns: ["paper_id"];
             isOneToOne: false;
             referencedRelation: "papers";
@@ -636,6 +752,7 @@ export type Database = {
           authors: string[];
           canonical_url: string | null;
           created_at: string;
+          deleted_at: string | null;
           doi: string | null;
           fts: unknown;
           id: string;
@@ -671,6 +788,7 @@ export type Database = {
           authors?: string[];
           canonical_url?: string | null;
           created_at?: string;
+          deleted_at?: string | null;
           doi?: string | null;
           fts?: unknown;
           id?: string;
@@ -706,6 +824,7 @@ export type Database = {
           authors?: string[];
           canonical_url?: string | null;
           created_at?: string;
+          deleted_at?: string | null;
           doi?: string | null;
           fts?: unknown;
           id?: string;
@@ -804,12 +923,16 @@ export type Database = {
           abstract: string | null;
           accepted_paper_id: string | null;
           arxiv_id: string | null;
+          authors: string[];
           created_at: string;
+          decided_at: string | null;
           doi: string | null;
           id: string;
           normalised_title: string;
           provider: string;
           published_on: string | null;
+          query_context: string | null;
+          related_json: Json | null;
           score: number | null;
           score_breakdown: Json | null;
           status: Database["public"]["Enums"]["radar_status"];
@@ -824,12 +947,16 @@ export type Database = {
           abstract?: string | null;
           accepted_paper_id?: string | null;
           arxiv_id?: string | null;
+          authors?: string[];
           created_at?: string;
+          decided_at?: string | null;
           doi?: string | null;
           id?: string;
           normalised_title: string;
           provider: string;
           published_on?: string | null;
+          query_context?: string | null;
+          related_json?: Json | null;
           score?: number | null;
           score_breakdown?: Json | null;
           status?: Database["public"]["Enums"]["radar_status"];
@@ -844,12 +971,16 @@ export type Database = {
           abstract?: string | null;
           accepted_paper_id?: string | null;
           arxiv_id?: string | null;
+          authors?: string[];
           created_at?: string;
+          decided_at?: string | null;
           doi?: string | null;
           id?: string;
           normalised_title?: string;
           provider?: string;
           published_on?: string | null;
+          query_context?: string | null;
+          related_json?: Json | null;
           score?: number | null;
           score_breakdown?: Json | null;
           status?: Database["public"]["Enums"]["radar_status"];
@@ -869,6 +1000,54 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      radar_runs: {
+        Row: {
+          candidates_added: number;
+          candidates_fetched: number;
+          created_at: string;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          model: string | null;
+          prompt_version: string | null;
+          queries: string[];
+          query_context: string | null;
+          status: string;
+          usage: Json | null;
+          user_id: string;
+        };
+        Insert: {
+          candidates_added?: number;
+          candidates_fetched?: number;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          model?: string | null;
+          prompt_version?: string | null;
+          queries?: string[];
+          query_context?: string | null;
+          status?: string;
+          usage?: Json | null;
+          user_id: string;
+        };
+        Update: {
+          candidates_added?: number;
+          candidates_fetched?: number;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          model?: string | null;
+          prompt_version?: string | null;
+          queries?: string[];
+          query_context?: string | null;
+          status?: string;
+          usage?: Json | null;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       reading_sessions: {
         Row: {
@@ -1108,7 +1287,9 @@ export type Database = {
         | "suggesting"
         | "done"
         | "failed";
-      radar_status: "fetched" | "scored" | "in_review" | "accepted" | "dismissed";
+      qa_coverage: "grounded" | "partial" | "insufficient";
+      qa_status: "pending" | "answered" | "failed";
+      radar_status: "fetched" | "scored" | "in_review" | "accepted" | "dismissed" | "deferred";
       reading_status:
         | "to_read"
         | "queued"
@@ -1295,7 +1476,9 @@ export const Constants = {
         "done",
         "failed",
       ],
-      radar_status: ["fetched", "scored", "in_review", "accepted", "dismissed"],
+      qa_coverage: ["grounded", "partial", "insufficient"],
+      qa_status: ["pending", "answered", "failed"],
+      radar_status: ["fetched", "scored", "in_review", "accepted", "dismissed", "deferred"],
       reading_status: [
         "to_read",
         "queued",

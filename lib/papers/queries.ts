@@ -12,7 +12,7 @@ type Client = SupabaseClient<Database>;
 export async function fetchPaperLibrary(supabase: Client): Promise<PaperLibraryItem[]> {
   const [papersRes, topicLinksRes, openQuestionRes, questionAnnotationsRes, experimentLinksRes] =
     await Promise.all([
-      supabase.from("papers").select("*"),
+      supabase.from("papers").select("*").is("deleted_at", null),
       supabase.from("paper_topics").select("paper_id, topics(name, slug)"),
       supabase.from("paper_notes").select("paper_id, body_md").eq("section_type", "open_questions"),
       supabase

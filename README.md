@@ -21,21 +21,34 @@ consolidate everything into weekly syntheses.
    empty sections, and proposes topics/concepts/priority/relevance. Everything AI-made is
    labelled, editable, and **never overwrites your notes**; suggestions wait for your
    accept/reject.
-2. **Read** (`/papers/[slug]/read`): split-screen PDF + page-linked AI passage summaries
-   that guide (not replace) the paper. Annotate inline — notes, questions, corrections,
-   ideas — and quick-create concepts/misconceptions without leaving the flow. Sessions
-   start/resume with one click and log themselves when you end them (duration, takeaway,
-   what to continue).
+2. **Read** (`/papers/[slug]/read`): a reader-first three-pane workspace — structured
+   notes (editable in place) on the left, a large PDF in the centre, and the assistant
+   rail (page-linked AI passage summaries, annotations, Q&A) on the right. Side panels
+   collapse and resize; layout, page, and zoom persist. Annotate inline — notes,
+   questions, corrections, ideas — quick-create concepts/misconceptions, and ask the AI
+   to **answer questions from the paper itself** (cited pages, direct claims separated
+   from interpretation, honest "the paper doesn't cover this"). Sessions start/resume
+   with one click and log themselves when you end them.
 3. **View** (`/papers/[slug]`): the clean, read-only record of everything accumulated —
-   summary, breakdown with your annotations, structured notes, misconceptions,
-   experiments, relations, sources. Deep editing lives at `/papers/[slug]/notes`.
+   summary, breakdown with your annotations and Q&A, structured notes, misconceptions,
+   relations, sources. Deep editing lives at `/papers/[slug]/notes`.
 4. **Synthesise** (`/synthesis`): weekly/monthly notes; "Draft with AI" writes a first
    pass from that week's actual recorded activity, you edit and approve, and the original
    draft is preserved alongside your version.
+5. **Discover** (`/radar`): recommendation-first Research Radar. Refresh on demand and it
+   infers what you may want to read next from your library itself (reading depth, topics,
+   concepts, recent questions, past accept/dismiss decisions) — metadata and abstracts
+   only, deterministic scoring, deduped and diversity-filtered, with per-candidate
+   explanations of _why_ it appeared. Accept into the reading queue (honestly unread),
+   defer, or dismiss; a one-off topic search explores without creating a stored profile.
 
-Plus: searchable/filterable library, topics & concepts pages, experiments,
-misconception records, dashboard ("what should I work on next?"), Postgres full-text
-search over everything (`Ctrl+K`), and honest reading/verification statuses.
+Plus: searchable/filterable library with a recoverable **trash** (soft delete + restore +
+itemised permanent delete), a Topics landscape (reading-depth coverage per area), a
+Concepts glossary (technical reference entries), misconception records, a dashboard with
+real hierarchy ("what should I do next?" + 14-day activity), Postgres full-text search
+over everything (`Ctrl+K`), and honest reading/verification statuses with explanations
+everywhere (single source of truth in `lib/statuses.ts`). Experiments is dormant in this
+version — hidden from navigation, data intact.
 
 ## Stack
 

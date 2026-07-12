@@ -163,6 +163,49 @@ export const PAPER_SECTIONS: readonly PaperSectionDef[] = [
   },
 ] as const;
 
+/**
+ * Grouping used by the reading-mode notes panel so 24 sections stay
+ * navigable. Order within groups follows PAPER_SECTIONS order.
+ */
+export const SECTION_GROUPS: readonly { label: string; types: readonly PaperSectionType[] }[] = [
+  { label: "Essence", types: ["summary", "thesis", "problem", "insufficiency"] },
+  {
+    label: "Method",
+    types: [
+      "architecture",
+      "mechanism",
+      "equations",
+      "intuition",
+      "why_it_works",
+      "training_setup",
+    ],
+  },
+  {
+    label: "Evidence",
+    types: [
+      "evaluation",
+      "results",
+      "production_evidence",
+      "serving",
+      "failure_modes",
+      "segment_risks",
+    ],
+  },
+  {
+    label: "My thinking",
+    types: [
+      "relevance_to_me",
+      "implementation_mapping",
+      "experiment_proposal",
+      "misconceptions",
+      "open_questions",
+      "related_papers",
+      "boss_explanation",
+      "sources_to_verify",
+    ],
+  },
+] as const;
+
 export const SECTION_BY_TYPE: ReadonlyMap<PaperSectionType, PaperSectionDef> = new Map(
   PAPER_SECTIONS.map((s) => [s.type, s])
 );

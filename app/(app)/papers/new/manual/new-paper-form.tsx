@@ -15,11 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  READING_STATUS_LABELS,
-  readingStatusValues,
-  type ReadingStatus,
-} from "@/lib/validation/enums";
+import { ReadingStatusItems } from "@/components/status-select";
+import { type ReadingStatus } from "@/lib/validation/enums";
 
 export function NewPaperForm({ topics }: { topics: { id: string; name: string }[] }) {
   const [pending, startTransition] = useTransition();
@@ -126,11 +123,7 @@ export function NewPaperForm({ topics }: { topics: { id: string; name: string }[
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {readingStatusValues.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {READING_STATUS_LABELS[s]}
-                </SelectItem>
-              ))}
+              <ReadingStatusItems />
             </SelectContent>
           </Select>
         </div>

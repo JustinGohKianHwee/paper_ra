@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { saveSection } from "@/actions/notes";
 import { RelationsEditor, type RelationDisplay } from "@/components/papers/relations-editor";
@@ -29,6 +29,7 @@ export default async function PaperNotesPage({ params }: { params: Promise<{ slu
 
   const { data: paper } = await supabase.from("papers").select("*").eq("slug", slug).maybeSingle();
   if (!paper) notFound();
+  if (paper.deleted_at) redirect(`/papers/${paper.slug}`);
 
   const [notesRes, relationsOutRes, relationsInRes, allPapersRes] = await Promise.all([
     supabase.from("paper_notes").select("*").eq("paper_id", paper.id).order("position"),
@@ -44,7 +45,12 @@ export default async function PaperNotesPage({ params }: { params: Promise<{ slu
         "id, relation_kind, from_paper_id, papers!paper_relations_from_paper_id_fkey(title, slug)"
       )
       .eq("to_paper_id", paper.id),
-    supabase.from("papers").select("id, title").neq("id", paper.id).order("title"),
+    supabase
+      .from("papers")
+      .select("id, title")
+      .neq("id", paper.id)
+      .is("deleted_at", null)
+      .order("title"),
   ]);
 
   const notes = new Map<string, PaperNoteRow>(

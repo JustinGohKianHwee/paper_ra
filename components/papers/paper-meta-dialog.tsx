@@ -22,13 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ReadingStatusItems, VerificationStatusItems } from "@/components/status-select";
 import type { PaperRow } from "@/lib/supabase/database.types";
-import {
-  READING_STATUS_LABELS,
-  VERIFICATION_STATUS_LABELS,
-  readingStatusValues,
-  verificationStatusValues,
-} from "@/lib/validation/enums";
 
 export function PaperMetaDialog({ paper }: { paper: PaperRow }) {
   const [open, setOpen] = useState(false);
@@ -177,11 +172,7 @@ export function PaperMetaDialog({ paper }: { paper: PaperRow }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {readingStatusValues.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {READING_STATUS_LABELS[s]}
-                  </SelectItem>
-                ))}
+                <ReadingStatusItems />
               </SelectContent>
             </Select>
           </div>
@@ -192,11 +183,7 @@ export function PaperMetaDialog({ paper }: { paper: PaperRow }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {verificationStatusValues.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {VERIFICATION_STATUS_LABELS[s]}
-                  </SelectItem>
-                ))}
+                <VerificationStatusItems />
               </SelectContent>
             </Select>
           </div>

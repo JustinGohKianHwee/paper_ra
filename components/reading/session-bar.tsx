@@ -16,8 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ReadingStatusItems } from "@/components/status-select";
 import type { ReadingStatus } from "@/lib/supabase/database.types";
-import { READING_STATUS_LABELS, readingStatusValues } from "@/lib/validation/enums";
+import { READING_STATUS_LABELS } from "@/lib/validation/enums";
 
 function formatElapsed(startedAt: string, now: number): string {
   const totalSeconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000));
@@ -170,11 +171,7 @@ export function SessionBar({
                     <SelectItem value={KEEP}>
                       Keep “{READING_STATUS_LABELS[currentStatus]}”
                     </SelectItem>
-                    {readingStatusValues.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {READING_STATUS_LABELS[s]}
-                      </SelectItem>
-                    ))}
+                    <ReadingStatusItems />
                   </SelectContent>
                 </Select>
               </div>

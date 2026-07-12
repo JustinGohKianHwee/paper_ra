@@ -28,6 +28,44 @@ portfolio site.
   components.
 - App name, targets, and other tunables live in `lib/config.ts`.
 
+## Recent Codex handoff: reading mode layout (2026-07-12)
+
+The reading page was reshaped into a reader-first three-pane workspace:
+
+- `app/(app)/layout.tsx` now delegates the authenticated shell to
+  `components/app-shell.tsx`. Keep auth/data loading in the server layout; keep
+  interactive shell state in the client component.
+- `components/app-shell.tsx` owns the desktop sidebar, mobile header, command palette,
+  sign-out controls, and theme toggle. On `/papers/[slug]/read`, the desktop sidebar can
+  collapse to a narrow rail to give the PDF more width. The state is stored in
+  `localStorage` key `ra:reading-sidebar-collapsed`.
+- `components/nav-links.tsx` supports `collapsed`, rendering icon-only links with
+  accessible labels and `title`s.
+- `components/reading/reading-workspace.tsx` owns the reading workspace: left structured
+  notes, middle PDF reader, right AI passage/annotation rail. It uses
+  `react-resizable-panels` and persists its layout under `ra:reading-layout:v4`.
+- Important gotcha: `react-resizable-panels` treats bare numeric `defaultSize`,
+  `minSize`, and `maxSize` values as pixels. Use explicit percentage strings such as
+  `"22%"`, `"52%"`, and `"26%"`; otherwise side panes collapse into tiny slivers.
+- Current desktop pane defaults are notes `22%`, PDF `52%`, assistant `26%`; minimums
+  are notes `18%`, PDF `40%`, assistant `22%`. Desktop mode starts at `1280px`; below
+  that, reading mode switches to tabs.
+- Passage cards in the assistant rail are page-linked. Clicking a passage header, or
+  non-interactive empty/body space in the passage card, calls `jumpTo(passage)` and
+  reloads the PDF iframe at `paper.page_start`. Interactive controls inside the card
+  (buttons, links, inputs, textareas, selects) intentionally do not trigger a jump.
+- The PDF iframe fragment uses `#page=<n>&pagemode=none&zoom=page-width` for fit-width
+  mode. Numeric zoom options use `zoom=<value>`.
+- Reading mode includes `FormulaOcrDialog` (`components/reading/formula-ocr-dialog.tsx`),
+  exposed from the PDF toolbar and assistant rail. It accepts paste/upload/screen-capture
+  images, lets the user crop, then calls the server action `recognizeFormula` in
+  `actions/formula-ocr.ts`. The screenshot is sent once to OpenAI and is not persisted;
+  the user copies the returned LaTeX/`$$...$$` Markdown into notes or questions manually.
+  Optional env: `FORMULA_OCR_MODEL` (default `gpt-5.4-nano`).
+- Playwright could not be used locally during this change because the browser binary was
+  not installed, so layout validation was via code inspection plus `typecheck`, `lint`,
+  and unit tests.
+
 ## AI conventions (non-negotiable)
 
 - `OPENAI_API_KEY` is **server-only**: every module touching it imports `"server-only"`
@@ -51,7 +89,18 @@ portfolio site.
   URLs with plain `fetch`.
 - The UI must disclose when content is sent to OpenAI (`AI_DISCLOSURE` in `lib/config.ts`).
 - The app must remain fully usable with no OpenAI key (AI features disabled gracefully).
-- Tests never call the real API: use `tests/mocks/openai-server.mjs` via `OPENAI_BASE_URL`.
+- Tests never call the real API: use `tests/mocks/openai-server.mjs` via `OPENAI_BASE_URL`
+  (it also serves a mock arXiv Atom feed for Radar via `ARXIV_BASE_URL`).
+- **Grounded Q&A** answers only from retrieved `paper_pages` text
+  (`lib/ai/qa-retrieval.ts` is pure/lexical — no vectors); answers must separate direct
+  paper claims from interpretation, cite pages, admit "insufficient" coverage, and are
+  audited as `processing_runs` rows with stage `qa` under the same rate limit.
+- **Radar** builds no stored interest profile: every refresh re-derives one from the
+  library. Metadata + abstracts only — never download/summarise candidate PDFs.
+  Deterministic scoring first; at most one LLM call per refresh (top slice
+  explanations, usage on `radar_runs`). Accepting a candidate creates an honest
+  `queued` + `metadata_only` paper — never mark it read/verified, never turn generated
+  "why" text into notes. Refresh stays user-triggered (no cron/background jobs).
 
 ## Data model conventions
 
@@ -65,8 +114,17 @@ portfolio site.
 - Slugs are stable, generated once, unique per user. Do not regenerate on rename.
 - Statuses are enums. "Studied through a guide" ≠ "verified from the paper" — never
   upgrade `verification_status` programmatically (AI processing must not touch it).
-- Search is Postgres FTS (`search_all`, includes annotations). pgvector is a documented
-  future extension — do not add it without being asked.
+  Status _meanings_ live only in `lib/statuses.ts` (labels beside the zod enums);
+  badges, tooltips, selects, filters, and docs must read from there, never restate them.
+- Knowledge-object visuals (topic/concept/question/misconception/correction/idea/note/AI)
+  come from `lib/knowledge-objects.ts`: always icon + label + colour, never colour alone.
+- Papers are trashed, not deleted: set/clear `papers.deleted_at`; every query surface
+  filters `deleted_at is null`; hard delete only from `/papers/trash` after soft delete.
+- Experiments is **dormant**: keep tables/records/routes working, but never re-add it to
+  nav, dashboard, palette, or search without being asked.
+- Search is Postgres FTS (`search_all`, includes annotations, excludes trashed papers
+  and dormant experiments). pgvector is a documented future extension — do not add it
+  without being asked.
 - Schema changes: new timestamped migration in `supabase/migrations/`; never edit an
   applied one. Regenerate `lib/supabase/database.gen.ts` afterwards.
 

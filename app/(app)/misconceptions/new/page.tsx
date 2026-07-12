@@ -13,7 +13,7 @@ export default async function NewMisconceptionPage({
   const { paper: preselectedPaperId } = await searchParams;
   const supabase = await createClient();
   const [papersRes, conceptsRes] = await Promise.all([
-    supabase.from("papers").select("id, title").order("title"),
+    supabase.from("papers").select("id, title").is("deleted_at", null).order("title"),
     supabase.from("concepts").select("id, name").order("name"),
   ]);
 

@@ -91,3 +91,24 @@ Changed in v2:
   unique index = one active session per user; `minutes` computed at end.
 - `synthesis_notes`: `ai_draft_md` (original AI draft, preserved), `approved_at`.
 - `search_all` now includes `paper_annotations` (kind `annotation`).
+
+## v3 additions (reading workspace, trash, grounded Q&A, Radar v1)
+
+| Table         | Purpose                                        | Notable fields                                                                                                                                                                                                                                                                                     |
+| ------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paper_pages` | Persisted per-page PDF text extraction         | page_no, content, char_count; unique (paper_id, page_no); written by the pipeline's extract stage, read by grounded Q&A retrieval; replaced on reprocess                                                                                                                                           |
+| `paper_qa`    | Grounded Q&A exchanges on question annotations | annotation_id (thread anchor; position 1 = the question itself, 2+ = follow-ups), question_md, answer_md, answer_authorship, coverage (grounded/partial/insufficient), grounding jsonb (cited pages + passage ids + retrieved pages), status pending/answered/failed, model, prompt_version, usage |
+| `radar_runs`  | Audit trail for Radar refreshes                | query_context (one-off topic search), queries[], candidates_fetched/added, model, usage, status, error                                                                                                                                                                                             |
+
+Changed in v3:
+
+- `papers`: `deleted_at` — recoverable trash. Every library/search/dashboard/Radar
+  surface filters `deleted_at is null`; `/papers/trash` lists, restores, or permanently
+  deletes (FK cascades wipe attached records; misconceptions survive with `paper_id`
+  set null; concepts/topics untouched).
+- `radar_candidates`: `related_json` (why: matched topics/concepts/papers/terms),
+  `query_context`, `decided_at`, `authors[]`; `radar_status` gains `deferred`.
+- `search_all` v3: excludes trashed papers (and their notes/annotations) and no longer
+  searches the dormant `experiments` feature (data retained; union branch restorable).
+- Status _definitions_ are centralised in `lib/statuses.ts` (labels stay in
+  `lib/validation/enums.ts`); badges, tooltips, filters, and forms all read from it.

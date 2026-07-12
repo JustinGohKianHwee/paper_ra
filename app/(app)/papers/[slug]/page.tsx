@@ -1,30 +1,62 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookOpen, ExternalLink, NotebookPen } from "lucide-react";
 import { setPaperConcepts, setPaperTopics } from "@/actions/papers";
 import { AiBadge } from "@/components/ai-badge";
 import { MarkdownView } from "@/components/markdown-view";
+import { RestorePaperButton, TrashPaperButton } from "@/components/papers/delete-paper-dialog";
 import { LinkPicker } from "@/components/papers/link-picker";
 import { PaperMetaDialog } from "@/components/papers/paper-meta-dialog";
 import { ProcessingBanner } from "@/components/papers/processing-banner";
 import { SuggestionsPanel } from "@/components/papers/suggestions-panel";
-import { ANNOTATION_KIND_LABELS } from "@/components/reading/annotation-item";
 import {
-  ExperimentStatusBadge,
+  ConceptBadge,
   PriorityDots,
   ReadingStatusBadge,
   TopicBadge,
   VerificationBadge,
 } from "@/components/status-badges";
+import { KNOWLEDGE_OBJECTS } from "@/lib/knowledge-objects";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VerificationCallout } from "@/components/verification-callout";
 import { hasRealContent } from "@/lib/papers/queries";
-import type { PaperNoteRow } from "@/lib/supabase/database.types";
+import type { PaperNoteRow, PaperQaRow } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { PAPER_SECTIONS } from "@/lib/templates/paper";
+
+/** Read-only rendering of a question's grounded Q&A record in view mode. */
+function QaRecord({ rows }: { rows: PaperQaRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="mt-1.5 space-y-2 border-l-2 border-violet-500/30 pl-2.5">
+      {rows.map((row) => {
+        const pages = ((row.grounding ?? {}) as { pages?: number[] }).pages ?? [];
+        return (
+          <div key={row.id} className="text-sm">
+            {row.position > 1 ? (
+              <p className="text-xs text-muted-foreground">Follow-up: {row.question_md}</p>
+            ) : null}
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <AiBadge authorship={row.answer_authorship} />
+              {row.coverage ? (
+                <span className="text-[10px] text-muted-foreground">{row.coverage}</span>
+              ) : null}
+              {pages.length > 0 ? (
+                <span className="text-[10px] text-muted-foreground">
+                  cites p. {pages.join(", ")}
+                </span>
+              ) : null}
+            </div>
+            <MarkdownView markdown={row.answer_md ?? ""} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -48,6 +80,7 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
     notesRes,
     passagesRes,
     annotationsRes,
+    qaRes,
     suggestionsRes,
     topicsRes,
     conceptsRes,
@@ -55,13 +88,18 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
     paperConceptsRes,
     relationsOutRes,
     relationsInRes,
-    experimentsRes,
     misconceptionsRes,
     sourcesRes,
   ] = await Promise.all([
     supabase.from("paper_notes").select("*").eq("paper_id", paper.id).order("position"),
     supabase.from("paper_passages").select("*").eq("paper_id", paper.id).order("position"),
     supabase.from("paper_annotations").select("*").eq("paper_id", paper.id).order("created_at"),
+    supabase
+      .from("paper_qa")
+      .select("*")
+      .eq("paper_id", paper.id)
+      .eq("status", "answered")
+      .order("position"),
     supabase
       .from("paper_suggestions")
       .select("*")
@@ -81,10 +119,6 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
       .select("id, relation_kind, papers!paper_relations_from_paper_id_fkey(title, slug)")
       .eq("to_paper_id", paper.id),
     supabase
-      .from("experiment_papers")
-      .select("experiments(id, title, slug, status)")
-      .eq("paper_id", paper.id),
-    supabase
       .from("misconception_corrections")
       .select("id, initial_belief_md, corrected_understanding_md, corrected_on")
       .eq("paper_id", paper.id)
@@ -101,6 +135,10 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
     const key = a.passage_id ?? null;
     annotationsByPassage.set(key, [...(annotationsByPassage.get(key) ?? []), a]);
   }
+  const qaByAnnotation = new Map<string, NonNullable<typeof qaRes.data>>();
+  for (const row of qaRes.data ?? []) {
+    qaByAnnotation.set(row.annotation_id, [...(qaByAnnotation.get(row.annotation_id) ?? []), row]);
+  }
 
   const selectedTopicIds = (paperTopicsRes.data ?? []).map((t) => t.topic_id);
   const selectedConceptIds = (paperConceptsRes.data ?? []).map((c) => c.concept_id);
@@ -108,18 +146,6 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
   const concepts = conceptsRes.data ?? [];
   const linkedTopics = topics.filter((t) => selectedTopicIds.includes(t.id));
   const linkedConcepts = concepts.filter((c) => selectedConceptIds.includes(c.id));
-
-  const experiments = (experimentsRes.data ?? [])
-    .map(
-      (e) =>
-        e.experiments as unknown as {
-          id: string;
-          title: string;
-          slug: string;
-          status: string;
-        } | null
-    )
-    .filter((e): e is NonNullable<typeof e> => e !== null);
 
   const metaLine = [
     paper.organisation,
@@ -130,7 +156,7 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
       : null,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(" 路 ");
 
   const summaryNote = notesByType.get("summary");
   const renderedSections = PAPER_SECTIONS.filter(
@@ -139,6 +165,17 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
 
   return (
     <article className="space-y-6">
+      {paper.deleted_at ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            This paper is in the trash - it is hidden from your library, search, dashboard, and
+            Radar.
+          </p>
+          <span className="ml-auto">
+            <RestorePaperButton paperId={paper.id} />
+          </span>
+        </div>
+      ) : null}
       <header className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
@@ -170,17 +207,22 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button asChild size="sm">
-              <Link href={`/papers/${paper.slug}/read`}>
-                <BookOpen className="size-4" /> Read
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/papers/${paper.slug}/notes`}>
-                <NotebookPen className="size-4" /> Structured notes
-              </Link>
-            </Button>
-            <PaperMetaDialog paper={paper} />
+            {!paper.deleted_at ? (
+              <>
+                <Button asChild size="sm">
+                  <Link href={`/papers/${paper.slug}/read`}>
+                    <BookOpen className="size-4" /> Read
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/papers/${paper.slug}/notes`}>
+                    <NotebookPen className="size-4" /> Structured notes
+                  </Link>
+                </Button>
+                <PaperMetaDialog paper={paper} />
+                <TrashPaperButton paperId={paper.id} title={paper.title} />
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -222,11 +264,7 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
           />
           <Separator orientation="vertical" className="h-4" />
           {linkedConcepts.map((c) => (
-            <Link key={c.id} href={`/concepts/${c.slug}`}>
-              <Badge variant="outline" className="font-normal hover:bg-accent">
-                {c.name}
-              </Badge>
-            </Link>
+            <ConceptBadge key={c.id} name={c.name} slug={c.slug} />
           ))}
           <LinkPicker
             label="Concepts"
@@ -258,65 +296,6 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
         </section>
       ) : null}
 
-      {/* Paper breakdown with annotations */}
-      {passages.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold tracking-tight">Paper breakdown</h2>
-          <div className="space-y-3">
-            {passages.map((p) => {
-              const passageAnnotations = annotationsByPassage.get(p.id) ?? [];
-              return (
-                <div key={p.id} className="rounded-lg border px-4 py-3">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <h3 className="text-sm font-medium">{p.title}</h3>
-                    <span className="text-[11px] text-muted-foreground">
-                      {p.anchor}
-                      {p.page_start
-                        ? ` · pp. ${p.page_start}${p.page_end && p.page_end !== p.page_start ? `–${p.page_end}` : ""}`
-                        : ""}
-                    </span>
-                    <AiBadge className="ml-auto" />
-                  </div>
-                  <div className="mt-1">
-                    <MarkdownView markdown={p.ai_summary_md} />
-                  </div>
-                  {passageAnnotations.length > 0 ? (
-                    <div className="mt-2 space-y-2 border-t pt-2">
-                      {passageAnnotations.map((a) => (
-                        <div key={a.id} className="text-sm">
-                          <span className="mr-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {ANNOTATION_KIND_LABELS[a.kind] ?? a.kind}
-                            {a.kind === "question" && !a.resolved ? " · open" : ""}
-                          </span>
-                          <MarkdownView markdown={a.body_md} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      {/* Whole-paper annotations */}
-      {(annotationsByPassage.get(null) ?? []).length > 0 ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold tracking-tight">Reading notes (whole paper)</h2>
-          <div className="space-y-2">
-            {(annotationsByPassage.get(null) ?? []).map((a) => (
-              <div key={a.id} className="rounded-md border px-3 py-2 text-sm">
-                <span className="mr-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {ANNOTATION_KIND_LABELS[a.kind] ?? a.kind}
-                </span>
-                <MarkdownView markdown={a.body_md} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {/* Structured notes, rendered */}
       {renderedSections.length > 0 ? (
         <section className="space-y-4">
@@ -331,7 +310,10 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
                   </h3>
                   <AiBadge authorship={note.authorship} />
                 </div>
-                <MarkdownView markdown={note.body_md} />
+                <MarkdownView
+                  markdown={note.body_md}
+                  assumeDisplayMath={section.type === "equations"}
+                />
               </div>
             );
           })}
@@ -348,6 +330,99 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
         </div>
       ) : null}
 
+      {/* Reading annotations, rendered after the durable structured notes. */}
+      {annotations.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-tight">Reading notes and questions</h2>
+          <div className="space-y-3">
+            {passages.map((p) => {
+              const passageAnnotations = annotationsByPassage.get(p.id) ?? [];
+              if (passageAnnotations.length === 0) return null;
+              return (
+                <div key={p.id} className="rounded-lg border px-4 py-3">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-sm font-medium">{p.title}</h3>
+                    <span className="text-[11px] text-muted-foreground">
+                      {p.anchor}
+                      {p.page_start
+                        ? ` - pp. ${p.page_start}${p.page_end && p.page_end !== p.page_start ? `-${p.page_end}` : ""}`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-2 border-t pt-2">
+                    {passageAnnotations.map((a) => (
+                      <div key={a.id} className="text-sm">
+                        <span
+                          className={`mr-2 text-[10px] uppercase tracking-wide ${KNOWLEDGE_OBJECTS[a.kind].textClass}`}
+                        >
+                          {KNOWLEDGE_OBJECTS[a.kind].label}
+                          {a.kind === "question" && !a.resolved ? " - open" : ""}
+                        </span>
+                        <MarkdownView markdown={a.body_md} />
+                        <QaRecord rows={qaByAnnotation.get(a.id) ?? []} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {(annotationsByPassage.get(null) ?? []).length > 0 ? (
+              <div className="rounded-lg border px-4 py-3">
+                <h3 className="text-sm font-medium">Whole-paper notes</h3>
+                <div className="mt-2 space-y-2 border-t pt-2">
+                  {(annotationsByPassage.get(null) ?? []).map((a) => (
+                    <div key={a.id} className="text-sm">
+                      <span
+                        className={`mr-2 text-[10px] uppercase tracking-wide ${KNOWLEDGE_OBJECTS[a.kind].textClass}`}
+                      >
+                        {KNOWLEDGE_OBJECTS[a.kind].label}
+                        {a.kind === "question" && !a.resolved ? " - open" : ""}
+                      </span>
+                      <MarkdownView markdown={a.body_md} />
+                      <QaRecord rows={qaByAnnotation.get(a.id) ?? []} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Optional AI paper breakdown. */}
+      {passages.length > 0 ? (
+        <section className="space-y-2">
+          <details className="group rounded-lg border bg-muted/20 px-4 py-3">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+              AI paper breakdown
+              <AiBadge />
+              <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+                {passages.length} sections
+              </span>
+            </summary>
+            <div className="mt-3 space-y-3 border-t pt-3">
+              {passages.map((p) => (
+                <div key={p.id} className="rounded-md border bg-background px-3 py-2">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-sm font-medium">{p.title}</h3>
+                    <span className="text-[11px] text-muted-foreground">
+                      {p.anchor}
+                      {p.page_start
+                        ? ` - pp. ${p.page_start}${p.page_end && p.page_end !== p.page_start ? `-${p.page_end}` : ""}`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <MarkdownView markdown={p.ai_summary_md} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        </section>
+      ) : null}
+
       {/* Misconceptions */}
       {(misconceptionsRes.data ?? []).length > 0 ? (
         <section className="space-y-2">
@@ -360,31 +435,9 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
                   className="hover:underline underline-offset-4"
                 >
                   {m.initial_belief_md.replace(/[#*`>]/g, "").slice(0, 100)}
-                  {m.initial_belief_md.length > 100 ? "…" : ""}
+                  {m.initial_belief_md.length > 100 ? "..." : ""}
                 </Link>
                 <span className="ml-2 text-xs text-muted-foreground">{m.corrected_on}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {/* Experiments */}
-      {experiments.length > 0 ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold tracking-tight">Experiments</h2>
-          <ul className="space-y-1">
-            {experiments.map((e) => (
-              <li key={e.id} className="flex items-center gap-2 text-sm">
-                <Link
-                  href={`/experiments/${e.slug}`}
-                  className="hover:underline underline-offset-4"
-                >
-                  {e.title}
-                </Link>
-                <ExperimentStatusBadge
-                  status={e.status as Parameters<typeof ExperimentStatusBadge>[0]["status"]}
-                />
               </li>
             ))}
           </ul>
@@ -440,7 +493,7 @@ export default async function PaperViewPage({ params }: { params: Promise<{ slug
             {(sourcesRes.data ?? []).map((s) => (
               <li key={s.id} className="text-sm">
                 <span className="font-medium">{s.source_name}</span>
-                {s.locator ? <span className="text-muted-foreground"> — {s.locator}</span> : null}
+                {s.locator ? <span className="text-muted-foreground"> - {s.locator}</span> : null}
                 {s.needs_verification ? (
                   <Badge
                     variant="outline"
