@@ -46,32 +46,22 @@ It is deliberately **not** a generic paper summariser or a PDF chatbot:
 
 ## Screenshots
 
-> The images below are **labelled placeholders** — replace each `.svg` with a real capture
-> (same name, `.png`) from a running instance. See
-> [docs/screenshots/README.md](docs/screenshots/README.md) for exactly what to capture,
-> the target filename, and how to swap them in.
+The reading workspace — structured notes, the PDF (with persistent highlights), and the
+grounded-Q&A assistant rail, all in one view:
 
-![Reading workspace](docs/screenshots/reading-workspace.svg)
+![Reading workspace with highlights and grounded Q&A](docs/screenshots/reader_with_questions_summary_highlights.png)
 
-| Highlight → note                                           | Selection → grounded Q&A                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------ |
-| ![Highlight → note](docs/screenshots/highlight-note.svg)   | ![Ask about a selection](docs/screenshots/selection-ask.svg) |
+| Passage breakdown with rendered equations                           | Paper view mode                                        |
+| ------------------------------------------------------------------- | ------------------------------------------------------ |
+| ![Passage breakdown and equations](docs/screenshots/reader_2.png)   | ![Paper view mode](docs/screenshots/paper_summary.png) |
 
-| Smart add + AI review                                    | Paper view mode                                    |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| ![Smart add + AI review](docs/screenshots/add-paper-ai.svg) | ![Paper view mode](docs/screenshots/paper-view.svg) |
+| Smart add + AI suggestions                              | Research Radar                       |
+| ------------------------------------------------------- | ------------------------------------ |
+| ![Smart add and AI review](docs/screenshots/add_paper.png) | ![Research Radar](docs/screenshots/radar.png) |
 
-| Dashboard                                    | Research Radar                       |
-| -------------------------------------------- | ------------------------------------ |
-| ![Dashboard](docs/screenshots/dashboard.svg) | ![Radar](docs/screenshots/radar.svg) |
-
-| Weekly synthesis                               | Formula OCR                                    |
-| ---------------------------------------------- | ---------------------------------------------- |
-| ![Weekly synthesis](docs/screenshots/synthesis.svg) | ![Formula OCR](docs/screenshots/formula-ocr.svg) |
-
-| Search & command palette                                       |
-| -------------------------------------------------------------- |
-| ![Search & command palette](docs/screenshots/search-command.svg) |
+| Dashboard                                    | Misconceptions & corrections                           |
+| -------------------------------------------- | ------------------------------------------------------ |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Misconceptions](docs/screenshots/misconceptions.png) |
 
 ## The reading & thinking loop
 
