@@ -138,7 +138,7 @@ The PDF viewer loads its pdf.js worker from `public/pdf.worker.min.mjs`, which
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run dev`                           | Dev server                                                                                                                     |
 | `npm run seed`                          | Idempotent, non-destructive seed (metadata + notes; **no** LLM calls)                                                          |
-| `npm run backfill`                      | Run every un-processed paper through the real AI pipeline (needs a real `OPENAI_API_KEY`; costs a few cents/paper; idempotent) |
+| `npm run backfill`                      | Run un-processed papers through the real AI pipeline (needs a real `OPENAI_API_KEY`; set `BACKFILL_EMAIL` on shared DBs)        |
 | `npm run db:reset`                      | Recreate the DB from migrations (wipes data)                                                                                   |
 | `npm run test`                          | Unit tests (no Supabase/OpenAI needed)                                                                                         |
 | `npm run test:integration`              | CRUD/RLS/search/pipeline tests (local Supabase + built-in OpenAI mock)                                                         |
@@ -151,9 +151,15 @@ with `npx supabase gen types typescript --local > lib/supabase/database.gen.ts`.
 Seeding is metadata + hand-authored notes only (deterministic, no LLM calls). To also
 populate AI passage summaries, extracted page text, AI note drafts, and suggestions for the
 seeded papers, run **`npm run backfill`** once with a real `OPENAI_API_KEY` set — it processes
-every un-processed paper through the same pipeline as the "Process" button. It targets
-whatever `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` point at (local by default;
-set the cloud values to backfill a deployed database) and skips papers already processed.
+un-processed papers through the same pipeline as the "Process" button. It targets whatever
+`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` point at (local by default; set the
+cloud values to backfill a deployed database) and skips papers already processed. On shared
+databases, scope it to one account first:
+
+```powershell
+$env:BACKFILL_EMAIL="gohkhjustin@gmail.com"
+npm.cmd run backfill
+```
 
 ## AI processing details
 

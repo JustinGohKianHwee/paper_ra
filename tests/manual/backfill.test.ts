@@ -39,8 +39,15 @@ function hasSource(p: {
 async function backfill() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const backfillEmail = process.env.BACKFILL_EMAIL?.trim().toLowerCase();
   if (!url || !serviceKey) {
     throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.");
+  }
+  const isLocalTarget = /^(http:\/\/127\.0\.0\.1|http:\/\/localhost)(:\d+)?/.test(url);
+  if (!backfillEmail && !isLocalTarget) {
+    throw new Error(
+      "BACKFILL_EMAIL is required when backfilling a hosted/shared Supabase database."
+    );
   }
   // This backfill deliberately runs many pipelines at once; lift the hourly cap
   // for this process only (the running app keeps its own configured limit).
@@ -48,17 +55,28 @@ async function backfill() {
 
   console.log(`Model: ${process.env.OPENAI_MODEL || "gpt-5-mini (default)"}`);
   console.log(`Target: ${url}`);
+  console.log(`Scope: ${backfillEmail ? `user ${backfillEmail}` : "all users"}`);
 
   const supabase = createClient<Database>(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { data: papers, error } = await supabase
+  let userId: string | null = null;
+  if (backfillEmail) {
+    const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+    if (userError) throw userError;
+    const user = users.users.find((u) => u.email?.toLowerCase() === backfillEmail);
+    if (!user) throw new Error(`No Supabase auth user found for BACKFILL_EMAIL=${backfillEmail}`);
+    userId = user.id;
+  }
+
+  let query = supabase
     .from("papers")
     .select("id, user_id, title, arxiv_id, pdf_url, source_input, processing_status")
     .is("deleted_at", null)
-    .neq("processing_status", "done")
-    .order("created_at", { ascending: true });
+    .neq("processing_status", "done");
+  if (userId) query = query.eq("user_id", userId);
+  const { data: papers, error } = await query.order("created_at", { ascending: true });
   if (error) throw error;
 
   const withSource = (papers ?? []).filter(hasSource);

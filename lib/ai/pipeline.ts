@@ -9,6 +9,7 @@ import {
   type UsageTotals,
 } from "@/lib/ai/client";
 import { chunkPages, extractPdfFromBuffer, extractPdfFromUrl } from "@/lib/ai/extract";
+import { sanitizeExtractedPageText } from "@/lib/ai/text-sanitize";
 import {
   AI_NOTE_SECTIONS,
   NOTES_JSON_SCHEMA,
@@ -433,13 +434,16 @@ export async function persistPaperPages(
   pages: string[]
 ): Promise<void> {
   await supabase.from("paper_pages").delete().eq("paper_id", paperId);
-  const rows = pages.map((content, i) => ({
-    user_id: userId,
-    paper_id: paperId,
-    page_no: i + 1,
-    content,
-    char_count: content.length,
-  }));
+  const rows = pages.map((page, i) => {
+    const content = sanitizeExtractedPageText(page);
+    return {
+      user_id: userId,
+      paper_id: paperId,
+      page_no: i + 1,
+      content,
+      char_count: content.length,
+    };
+  });
   for (let i = 0; i < rows.length; i += 50) {
     const { error } = await supabase.from("paper_pages").insert(rows.slice(i, i + 50));
     if (error) throw new Error(`Saving extracted pages failed: ${error.message}`);
