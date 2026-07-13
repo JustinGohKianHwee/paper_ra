@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" role="img" aria-label="Smart add + AI review — screenshot placeholder">
+  <rect width="1600" height="1000" rx="24" fill="#eef2f7"/>
+  <rect x="12" y="12" width="1576" height="976" rx="18" fill="none" stroke="#9aa7b8" stroke-width="3" stroke-dasharray="14 12"/>
+  <!-- window chrome hint -->
+  <circle cx="70" cy="70" r="11" fill="#cbd5e1"/>
+  <circle cx="106" cy="70" r="11" fill="#cbd5e1"/>
+  <circle cx="142" cy="70" r="11" fill="#cbd5e1"/>
+  <rect x="176" y="58" width="1364" height="24" rx="12" fill="#dbe2ea"/>
+  <!-- number badge -->
+  <circle cx="800" cy="378" r="70" fill="#6366f1"/>
+  <text x="800" y="378" font-family="ui-sans-serif, Segoe UI, Helvetica, Arial, sans-serif" font-size="72" font-weight="700" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  <!-- title -->
+  <text x="800" y="524" font-family="ui-sans-serif, Segoe UI, Helvetica, Arial, sans-serif" font-size="66" font-weight="700" fill="#1f2937" text-anchor="middle">Smart add + AI review</text>
+  <!-- description -->
+  <text x="800" y="596" font-family="ui-sans-serif, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" fill="#4b5563" text-anchor="middle">Paste a link or DOI, then accept / reject AI topic &amp; concept suggestions</text>
+  <!-- watermark -->
+  <text x="800" y="906" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="26" letter-spacing="4" font-weight="600" fill="#8592a3" text-anchor="middle">SCREENSHOT PLACEHOLDER — REPLACE WITH A REAL CAPTURE</text>
+</svg>

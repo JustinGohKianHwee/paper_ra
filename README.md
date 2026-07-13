@@ -29,7 +29,9 @@ It is deliberately **not** a generic paper summariser or a PDF chatbot:
 
 - **The PDF is the workspace, not an attachment.** A real pdf.js viewer with a selectable
   text layer sits at the centre. Select text in the paper and turn it directly into a
-  grounded question or a note — the interaction lives _in_ the paper, not in a side chat.
+  persistent highlight, a grounded question, or a note — the interaction lives _in_ the
+  paper, not in a side chat. Highlights stay pinned to the passage at any zoom, and a
+  highlight can carry a note that the assistant rail opens for you the moment you make it.
 - **Answers are grounded in the paper, with provenance.** Q&A retrieves the paper's own
   extracted text, cites the pages it used, separates direct paper claims from
   interpretation, and admits when the paper simply doesn't say. A selected passage is
@@ -44,16 +46,32 @@ It is deliberately **not** a generic paper summariser or a PDF chatbot:
 
 ## Screenshots
 
-> Not yet captured — see [docs/screenshots/README.md](docs/screenshots/README.md) for exactly
-> what to capture and where to place each file.
+> The images below are **labelled placeholders** — replace each `.svg` with a real capture
+> (same name, `.png`) from a running instance. See
+> [docs/screenshots/README.md](docs/screenshots/README.md) for exactly what to capture,
+> the target filename, and how to swap them in.
 
-| Reading workspace                                            | Selection → grounded question                                |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![Reading workspace](docs/screenshots/reading-workspace.png) | ![Ask about a selection](docs/screenshots/selection-ask.png) |
+![Reading workspace](docs/screenshots/reading-workspace.svg)
+
+| Highlight → note                                           | Selection → grounded Q&A                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| ![Highlight → note](docs/screenshots/highlight-note.svg)   | ![Ask about a selection](docs/screenshots/selection-ask.svg) |
+
+| Smart add + AI review                                    | Paper view mode                                    |
+| -------------------------------------------------------- | -------------------------------------------------- |
+| ![Smart add + AI review](docs/screenshots/add-paper-ai.svg) | ![Paper view mode](docs/screenshots/paper-view.svg) |
 
 | Dashboard                                    | Research Radar                       |
 | -------------------------------------------- | ------------------------------------ |
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Radar](docs/screenshots/radar.png) |
+| ![Dashboard](docs/screenshots/dashboard.svg) | ![Radar](docs/screenshots/radar.svg) |
+
+| Weekly synthesis                               | Formula OCR                                    |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ![Weekly synthesis](docs/screenshots/synthesis.svg) | ![Formula OCR](docs/screenshots/formula-ocr.svg) |
+
+| Search & command palette                                       |
+| -------------------------------------------------------------- |
+| ![Search & command palette](docs/screenshots/search-command.svg) |
 
 ## The reading & thinking loop
 
@@ -65,11 +83,14 @@ It is deliberately **not** a generic paper summariser or a PDF chatbot:
    (editable in place) on the left, the **PDF at the centre**, and the assistant rail
    (page-linked passage summaries, annotations, Q&A) on the right. Panels collapse and
    resize; page, zoom, and layout persist.
-3. **Select → ask or note**: select text in the paper and either **ask about it** (a
-   question grounded in that exact passage, answered with cited pages) or **capture it as a
-   note** — both remembering the page so you can jump back to the source. Annotate freely
-   (notes, questions, corrections, ideas), quick-create concepts and misconceptions without
-   leaving the paper, and OCR an equation screenshot to copy-ready KaTeX.
+3. **Select → highlight, ask, or note**: select text in the paper and either **highlight it**
+   (a persistent mark that stays on the PDF), **ask about it** (a question grounded in that
+   exact passage, answered with cited pages), or **capture it as a note** — all remembering
+   the page so you can jump back to the source. Choosing "Note" persists the highlight *and*
+   scrolls the rail to a freshly-opened composer for it, so the passage stays marked while
+   you write. Annotate freely (notes, questions, corrections, ideas), quick-create concepts
+   and misconceptions without leaving the paper, and OCR an equation screenshot to
+   copy-ready KaTeX.
 4. **View & synthesise**: `/papers/[slug]` is the clean, read-only record of everything
    accumulated; `/synthesis` drafts a weekly/monthly synthesis from your actual recorded
    activity for you to edit and approve.
@@ -78,10 +99,59 @@ It is deliberately **not** a generic paper summariser or a PDF chatbot:
    decisions) — metadata and abstracts only, with an explanation of why each candidate
    appeared.
 
-Plus: a searchable/filterable library with a recoverable **trash**, a Topics landscape, a
-Concepts glossary, misconception records, a dashboard with real hierarchy and a 14-day
-activity view, Postgres full-text search (`Ctrl+K`), and honest reading/verification
-statuses explained everywhere.
+## Features
+
+**Reading the PDF**
+
+- **Three-pane reader** (`react-resizable-panels`): structured notes · PDF · assistant rail.
+  Panels collapse and resize; page, zoom, and layout persist per paper. Below a desktop
+  width the panes become tabs.
+- **Real pdf.js viewer** with a selectable text layer, lazy per-page rendering, and
+  imperative navigation — passage cards, Q&A citations, and "return to source" all jump to
+  the right page without remounting the document.
+- **Persistent highlights.** Select text → **Highlight** to pin a mark that survives zoom and
+  re-render (rects are stored as page fractions, not fragile character offsets), or **Note**
+  to highlight *and* drop a linked note — the rail scrolls to an auto-opened composer for it.
+  Deleting the note leaves the highlight; the two are independent actions that compose.
+- **Formula OCR.** Paste or upload an equation screenshot, drag-crop it, and get structured,
+  copy-ready KaTeX / `$$…$$` Markdown (one OpenAI vision call; the image is never stored).
+
+**Capturing your thinking**
+
+- **Annotations** with provenance: notes, questions, corrections, ideas — each remembering
+  the page and exact passage it came from. Questions carry a resolve toggle.
+- **Grounded Q&A** on any question, answered only from the paper's own extracted text, with
+  cited pages, a coverage verdict (grounded / partial / insufficient), and a clear split
+  between paper claims and interpretation. Threads of follow-ups hang under the question.
+- **Quick-create** concepts and misconceptions from inside the paper, pre-linked, no
+  navigation away.
+- **Reading sessions**: start/resume an explicit session, then end it with a takeaway and a
+  "continue next time" note; the dashboard surfaces an open session to resume.
+
+**AI assistance (all provenance-labelled, never overwrites you)**
+
+- **Smart add** a paper from an arXiv link, DOI, title, or URL, or a PDF upload; metadata
+  resolves automatically.
+- **Staged, resumable ingestion**: extract text → passage breakdown → structured-note drafts
+  (empty sections only) → topic/concept/priority/relevance **suggestions** you accept or
+  reject. Every run is audited.
+- **Weekly/monthly synthesis** drafted from your *actual* recorded activity, for you to edit
+  and approve — the original AI draft is preserved alongside your edits.
+
+**Organising & finding**
+
+- **Library** with search and filters, and a recoverable **trash** (soft delete → restore or
+  permanently delete).
+- **Topics landscape**, a **Concepts glossary**, and **misconception** records — a connected
+  knowledge base, not just a pile of PDFs.
+- **Research Radar**: recommendation-first discovery inferred from your library, each
+  candidate shown with *why* it appeared (metadata and abstracts only).
+- **Dashboard** with real hierarchy, a stat strip, and a 14-day activity view.
+- **Global full-text search** across papers, notes, questions, and concepts (`Ctrl+K`
+  command palette), powered by Postgres FTS.
+- **Honest statuses** everywhere: reading depth and verification are separate and never
+  auto-upgraded; "studied through a guide" is never silently promoted to "verified from the
+  primary paper".
 
 ## Project status & direction
 
