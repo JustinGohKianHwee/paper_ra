@@ -20,12 +20,29 @@ import { Input } from "@/components/ui/input";
 // scripts/setup-pdf-worker.mjs), never a CDN — keeps the app local-first.
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
+/** A rectangle normalised to its page: fractions of page width/height (0..1). */
+export interface NormalisedRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** A user text selection resolved to a page + the exact selected text. */
 export interface PdfSelectionEvent {
   page: number;
   text: string;
   /** Viewport-relative anchor rect for positioning a floating toolbar. */
   rect: { top: number; left: number; width: number; height: number };
+  /** Per-line rects normalised to the page, for persisting a highlight. */
+  rects: NormalisedRect[];
+}
+
+/** A persisted highlight the viewer paints over the page text. */
+export interface PdfHighlight {
+  id: string;
+  page_number: number;
+  rects: NormalisedRect[];
 }
 
 export interface PdfViewerHandle {
@@ -40,6 +57,8 @@ interface PdfViewerProps {
   toolbarExtra?: React.ReactNode;
   /** Fires on a settled text selection inside the document (null clears it). */
   onSelectionChange?: (selection: PdfSelectionEvent | null) => void;
+  /** Persisted highlights to paint over the pages. */
+  highlights?: PdfHighlight[];
   ref?: React.Ref<PdfViewerHandle>;
 }
 
@@ -79,7 +98,14 @@ function loadState(paperId: string): PdfState {
  * assumes uniform page dimensions (true for essentially all papers); mixed
  * page sizes would only affect placeholder spacing, not correctness.
  */
-export function PdfViewer({ src, paperId, toolbarExtra, onSelectionChange, ref }: PdfViewerProps) {
+export function PdfViewer({
+  src,
+  paperId,
+  toolbarExtra,
+  onSelectionChange,
+  highlights,
+  ref,
+}: PdfViewerProps) {
   const initial = useMemo(() => loadState(paperId), [paperId]);
   const [numPages, setNumPages] = useState(0);
   const [zoom, setZoom] = useState(initial.zoom);
@@ -222,10 +248,26 @@ export function PdfViewer({ src, paperId, toolbarExtra, onSelectionChange, ref }
       }
       const page = pageEl ? Number(pageEl.dataset.pageNumber) : currentPageRef.current;
       const rect = range.getBoundingClientRect();
+      // Normalise per-line rects to the page box so a highlight survives zoom.
+      let rects: NormalisedRect[] = [];
+      if (pageEl) {
+        const pageBox = pageEl.getBoundingClientRect();
+        if (pageBox.width > 0 && pageBox.height > 0) {
+          rects = Array.from(range.getClientRects())
+            .map((r) => ({
+              x: (r.left - pageBox.left) / pageBox.width,
+              y: (r.top - pageBox.top) / pageBox.height,
+              w: r.width / pageBox.width,
+              h: r.height / pageBox.height,
+            }))
+            .filter((r) => r.w > 0.002 && r.h > 0.002);
+        }
+      }
       return {
         page,
         text,
         rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+        rects,
       };
     }
 
@@ -262,6 +304,16 @@ export function PdfViewer({ src, paperId, toolbarExtra, onSelectionChange, ref }
     }
     return set;
   }, [currentPage, numPages]);
+
+  const highlightsByPage = useMemo(() => {
+    const map = new Map<number, PdfHighlight[]>();
+    for (const h of highlights ?? []) {
+      const list = map.get(h.page_number) ?? [];
+      list.push(h);
+      map.set(h.page_number, list);
+    }
+    return map;
+  }, [highlights]);
 
   return (
     <div
@@ -373,26 +425,44 @@ export function PdfViewer({ src, paperId, toolbarExtra, onSelectionChange, ref }
                   }}
                 >
                   {mounted && pageWidth > 0 ? (
-                    <Page
-                      pageNumber={pageNumber}
-                      width={pageWidth}
-                      renderAnnotationLayer={false}
-                      onLoadSuccess={(page) => {
-                        if (pageNumber === 1 && aspect === null) {
-                          const w = page.originalWidth || page.width;
-                          const h = page.originalHeight || page.height;
-                          if (w && h) setAspect(h / w);
+                    <>
+                      <Page
+                        pageNumber={pageNumber}
+                        width={pageWidth}
+                        renderAnnotationLayer={false}
+                        onLoadSuccess={(page) => {
+                          if (pageNumber === 1 && aspect === null) {
+                            const w = page.originalWidth || page.width;
+                            const h = page.originalHeight || page.height;
+                            if (w && h) setAspect(h / w);
+                          }
+                        }}
+                        loading={
+                          <div
+                            className="flex items-center justify-center text-muted-foreground"
+                            style={{ height: Math.max(0, slotHeight - GAP) }}
+                          >
+                            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                          </div>
                         }
-                      }}
-                      loading={
-                        <div
-                          className="flex items-center justify-center text-muted-foreground"
-                          style={{ height: Math.max(0, slotHeight - GAP) }}
-                        >
-                          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                        </div>
-                      }
-                    />
+                      />
+                      {/* persisted highlight overlays (don't block text selection) */}
+                      {(highlightsByPage.get(pageNumber) ?? []).map((h) =>
+                        h.rects.map((r, ri) => (
+                          <div
+                            key={`${h.id}-${ri}`}
+                            data-highlight-overlay={h.id}
+                            className="pointer-events-none absolute rounded-[1px] bg-amber-300/40 mix-blend-multiply dark:bg-amber-400/40"
+                            style={{
+                              left: `${r.x * 100}%`,
+                              top: `${r.y * 100}%`,
+                              width: `${r.w * 100}%`,
+                              height: `${r.h * 100}%`,
+                            }}
+                          />
+                        ))
+                      )}
+                    </>
                   ) : (
                     <div className="absolute right-2 top-2 text-[10px] text-muted-foreground/60">
                       {pageNumber}

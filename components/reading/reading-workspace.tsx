@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   FileText,
+  Highlighter,
   MapPin,
   PanelLeftClose,
   PanelLeftOpen,
@@ -16,9 +17,12 @@ import { AnnotationComposer } from "@/components/reading/annotation-composer";
 import { AnnotationItem } from "@/components/reading/annotation-item";
 import { FormulaOcrDialog } from "@/components/reading/formula-ocr-dialog";
 import { NotesPanel } from "@/components/reading/notes-panel";
+import { HighlightItem } from "@/components/reading/highlight-item";
 import { PdfNavProvider } from "@/components/reading/pdf-nav-context";
 import {
   PdfViewer,
+  type NormalisedRect,
+  type PdfHighlight,
   type PdfSelectionEvent,
   type PdfViewerHandle,
 } from "@/components/reading/pdf-viewer";
@@ -33,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   PaperAnnotationRow,
+  PaperHighlightRow,
   PaperNoteRow,
   PaperPassageRow,
   PaperQaRow,
@@ -46,6 +51,7 @@ interface Props {
   annotations: PaperAnnotationRow[];
   qa: PaperQaRow[];
   notes: PaperNoteRow[];
+  highlights: PaperHighlightRow[];
   aiEnabled: boolean;
 }
 
@@ -88,6 +94,7 @@ export function ReadingWorkspace({
   annotations,
   qa,
   notes,
+  highlights,
   aiEnabled,
 }: Props) {
   const mounted = useMounted();
@@ -107,10 +114,35 @@ export function ReadingWorkspace({
     setSelection(next);
   }, []);
 
+  // After a "highlight + note", focus the new highlight's composer in the rail.
+  const [focusHighlightId, setFocusHighlightId] = useState<string | null>(null);
+
+  const pdfHighlights = useMemo<PdfHighlight[]>(
+    () =>
+      highlights.map((h) => ({
+        id: h.id,
+        page_number: h.page_number,
+        rects: (Array.isArray(h.rects) ? h.rects : []) as unknown as NormalisedRect[],
+      })),
+    [highlights]
+  );
+
+  // Notes attached to a highlight are shown under their highlight, not also in
+  // the passage / whole-paper lists.
+  const linkedAnnotationIds = useMemo(
+    () => new Set(highlights.map((h) => h.annotation_id).filter(Boolean) as string[]),
+    [highlights]
+  );
+  const annotationsById = useMemo(
+    () => new Map(annotations.map((a) => [a.id, a])),
+    [annotations]
+  );
+
   const byPassage = useMemo(() => {
     const map = new Map<string, PaperAnnotationRow[]>();
     const paperLevel: PaperAnnotationRow[] = [];
     for (const annotation of annotations) {
+      if (linkedAnnotationIds.has(annotation.id)) continue;
       if (annotation.passage_id) {
         const list = map.get(annotation.passage_id) ?? [];
         list.push(annotation);
@@ -120,7 +152,7 @@ export function ReadingWorkspace({
       }
     }
     return { map, paperLevel };
-  }, [annotations]);
+  }, [annotations, linkedAnnotationIds]);
 
   const qaByAnnotation = useMemo(() => {
     const map = new Map<string, PaperQaRow[]>();
@@ -154,6 +186,25 @@ export function ReadingWorkspace({
         <QuickConceptDialog paperId={paperId} />
         <QuickMisconceptionDialog paperId={paperId} />
       </div>
+
+      {highlights.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1 text-[13px] font-semibold tracking-tight">
+            <Highlighter className="size-3.5 text-amber-500" aria-hidden /> Highlights
+          </h2>
+          <div className="space-y-2">
+            {highlights.map((h) => (
+              <HighlightItem
+                key={h.id}
+                highlight={h}
+                note={h.annotation_id ? (annotationsById.get(h.annotation_id) ?? null) : null}
+                autoFocus={focusHighlightId === h.id}
+                onFocused={() => setFocusHighlightId(null)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {passages.length === 0 ? (
         <div className="rounded-md border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
@@ -277,6 +328,7 @@ export function ReadingWorkspace({
       paperId={paperId}
       toolbarExtra={makeFormulaTool()}
       onSelectionChange={handleSelection}
+      highlights={pdfHighlights}
     />
   ) : null;
 
@@ -301,6 +353,7 @@ export function ReadingWorkspace({
             composerOpenRef.current = open;
           }}
           onDone={() => setSelection(null)}
+          onHighlightNote={setFocusHighlightId}
         />
       ) : null}
     </PdfNavProvider>

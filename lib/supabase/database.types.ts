@@ -30,6 +30,7 @@ export type SourceRow = Tables["sources"]["Row"];
 export type RadarCandidateRow = Tables["radar_candidates"]["Row"];
 export type PaperPageRow = Tables["paper_pages"]["Row"];
 export type PaperQaRow = Tables["paper_qa"]["Row"];
+export type PaperHighlightRow = Tables["paper_highlights"]["Row"];
 export type RadarRunRow = Tables["radar_runs"]["Row"];
 
 export type ReadingStatus = Enums["reading_status"];

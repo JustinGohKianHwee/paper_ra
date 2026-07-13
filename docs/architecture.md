@@ -317,3 +317,20 @@ now would have coupled two large changes. The retrieval call sits behind a singl
 (`selectContext` produces the supplementary pages fed to the prompt), so a hybrid
 lexical+vector retriever can replace it later without touching the selection interaction, the
 prompt shape, or the provenance model. That is the recommended next retrieval improvement.
+
+## AD-29: Persistent highlights store captured rects, not re-matched quotes
+
+Highlighting (AD-27 deferred the exact-range form) is now implemented, but not via the
+quote-re-matching AD-27 speculated about — that path is brittle (fragmented text-layer spans,
+repeated phrases, hyphenation). Instead, at selection time we already hold the live DOM
+`Range`, so we read `range.getClientRects()` and normalise each rect against the page box to
+page fractions (`{x,y,w,h}` in 0..1). Those rects persist on `paper_highlights.rects` and the
+viewer re-projects them as absolutely-positioned overlays inside each page slot, so a
+highlight lands exactly where the user dragged and stays correct at any zoom or re-render —
+no re-matching, no dependence on text-layer stability. The text-quote `anchor` is still stored
+(via the linked note) as portable, renderer-independent provenance and a fallback for future
+re-projection if the PDF is replaced. A highlight is its own object: "just highlight" is a
+rects-only row; "Note" additionally creates a linked `note` annotation and the rail scrolls to
+its auto-opened composer. The link is `ON DELETE SET NULL` so deleting the note leaves the
+mark — highlighting and note-taking are independent actions that compose, not one feature
+bolted onto the other.

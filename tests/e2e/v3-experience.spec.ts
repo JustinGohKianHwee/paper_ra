@@ -85,32 +85,44 @@ test("reading workspace: panels, in-place notes, grounded Q&A, then trash → re
   await expect(page.getByRole("button", { name: /^p\. \d/ }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Follow-up" })).toBeVisible();
 
-  // --- Selection-driven note from the PDF text layer ---------------------------
+  // --- Selection-driven highlights + notes from the PDF text layer -------------
   // Programmatically select real text-layer content and settle it with mouseup,
   // exercising the viewer's selection pipeline without brittle pixel dragging.
-  const selected = await page.evaluate(() => {
-    const layer = document.querySelector(".react-pdf__Page__textContent");
-    const span = layer?.querySelector("span");
-    if (!span || !span.textContent?.trim()) return null;
-    const range = document.createRange();
-    range.selectNodeContents(span);
-    const sel = window.getSelection()!;
-    sel.removeAllRanges();
-    sel.addRange(range);
-    const scroller = document.querySelector<HTMLElement>(
-      '[data-testid="pdf-viewer"] .overflow-auto'
-    );
-    scroller?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-    return span.textContent.trim();
-  });
-  expect(selected).toBeTruthy();
-  // The floating selection toolbar appears; capture the passage as a note.
-  await expect(page.getByRole("button", { name: "Note", exact: true })).toBeVisible({
+  const selectText = () =>
+    page.evaluate(() => {
+      const layer = document.querySelector(".react-pdf__Page__textContent");
+      const span = layer?.querySelector("span");
+      if (!span || !span.textContent?.trim()) return null;
+      const range = document.createRange();
+      range.selectNodeContents(span);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document
+        .querySelector<HTMLElement>('[data-testid="pdf-viewer"] .overflow-auto')
+        ?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      return span.textContent.trim();
+    });
+
+  // "Highlight" (only): persists a highlight painted on the PDF, no note.
+  expect(await selectText()).toBeTruthy();
+  await expect(page.getByRole("button", { name: "Highlight", exact: true })).toBeVisible({
     timeout: 10_000,
   });
+  await page.getByRole("button", { name: "Highlight", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Highlights" })).toBeVisible({ timeout: 15_000 });
+  // The highlight is actually painted over the page text.
+  await expect(page.locator("[data-highlight-overlay]").first()).toBeVisible({ timeout: 15_000 });
+
+  // "Note": persists a highlight AND opens a note composer in the rail, ready to type.
+  expect(await selectText()).toBeTruthy();
   await page.getByRole("button", { name: "Note", exact: true }).click();
-  await expect(page.getByText(/Note captured from p\./)).toBeVisible({ timeout: 15_000 });
-  // The note carries a return-to-source page anchor in the assistant rail.
+  const noteBox = page.getByPlaceholder("Add a note about this highlight…");
+  await expect(noteBox).toBeVisible({ timeout: 15_000 });
+  await noteBox.fill(`Highlighted thought (${runId})`);
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByText(`Highlighted thought (${runId})`)).toBeVisible({ timeout: 15_000 });
+  // Highlights carry a return-to-source page anchor in the assistant rail.
   await expect(page.getByRole("button", { name: /^p\. \d+$/ }).first()).toBeVisible({
     timeout: 15_000,
   });

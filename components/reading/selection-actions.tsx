@@ -2,23 +2,23 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { MessageCircleQuestion, StickyNote, X } from "lucide-react";
+import { Highlighter, MessageCircleQuestion, StickyNote, X } from "lucide-react";
 import { toast } from "sonner";
-import { createAnnotation } from "@/actions/annotations";
 import { askAboutSelection } from "@/actions/qa";
+import { createHighlight } from "@/actions/highlights";
 import type { PdfSelectionEvent } from "@/components/reading/pdf-viewer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AI_DISCLOSURE } from "@/lib/config";
 
-const TOOLBAR_WIDTH = 220;
+const TOOLBAR_WIDTH = 268;
 
 /**
  * Floating actions for a live PDF text selection: "Ask about this" (grounds a
- * question in the selected passage) and "Note" (captures the passage as a note
- * with a return-to-source anchor). Kept close to the text so the reader never
- * leaves the flow. `onMouseDown` preventDefault keeps the selection alive while
- * the toolbar is clicked.
+ * question in the selected passage), "Highlight" (persists a highlight only),
+ * and "Note" (persists a highlight AND opens a note composer in the rail).
+ * Kept close to the text so the reader never leaves the flow. `onMouseDown`
+ * preventDefault keeps the selection alive while the toolbar is clicked.
  */
 export function SelectionActions({
   paperId,
@@ -26,6 +26,7 @@ export function SelectionActions({
   aiEnabled,
   onOpenChange,
   onDone,
+  onHighlightNote,
 }: {
   paperId: string;
   selection: PdfSelectionEvent | null;
@@ -33,6 +34,8 @@ export function SelectionActions({
   /** true while a composer is open, so the parent freezes selection updates. */
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
+  /** Called after a "highlight + note" so the rail can focus the new composer. */
+  onHighlightNote: (highlightId: string) => void;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<"toolbar" | "ask">("toolbar");
@@ -90,26 +93,44 @@ export function SelectionActions({
     });
   }
 
-  function createNote() {
+  function justHighlight() {
     if (!selection) return;
     startTransition(async () => {
-      const quote =
-        selection.text.length > 600 ? selection.text.slice(0, 600) + "…" : selection.text;
-      const result = await createAnnotation({
+      const result = await createHighlight({
         paper_id: paperId,
-        kind: "note",
-        body_md: `> ${quote.replace(/\n+/g, " ")}\n\n`,
-        selected_text: selection.text,
         page_number: selection.page,
-        anchor: { page: selection.page, quote: { exact: selection.text } },
+        selected_text: selection.text,
+        rects: selection.rects,
       });
       if (result.ok) {
-        toast.success(`Note captured from p. ${selection.page}`);
+        toast.success(`Highlighted on p. ${selection.page}`);
         window.getSelection()?.removeAllRanges();
         close();
         router.refresh();
       } else {
-        toast.error(result.error ?? "Could not create note");
+        toast.error(result.error ?? "Could not highlight");
+      }
+    });
+  }
+
+  function highlightAndNote() {
+    if (!selection) return;
+    startTransition(async () => {
+      const result = await createHighlight({
+        paper_id: paperId,
+        page_number: selection.page,
+        selected_text: selection.text,
+        rects: selection.rects,
+      });
+      if (result.ok && result.id) {
+        window.getSelection()?.removeAllRanges();
+        // The highlight stays painted on the PDF; hand the rail the new id so it
+        // scrolls to and opens a note composer for it.
+        onHighlightNote(result.id);
+        close();
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "Could not highlight");
       }
     });
   }
@@ -127,24 +148,35 @@ export function SelectionActions({
       onMouseDown={(e) => e.preventDefault()}
     >
       {mode === "toolbar" ? (
-        <div className="flex items-center gap-1 rounded-md border bg-popover p-1 shadow-md">
+        <div className="flex items-center gap-0.5 rounded-md border bg-popover p-1 shadow-md">
           {aiEnabled ? (
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 gap-1 px-2 text-xs"
+              className="h-7 gap-1 px-1.5 text-xs"
               onClick={startAsk}
               title={AI_DISCLOSURE}
             >
-              <MessageCircleQuestion className="size-3.5" /> Ask about this
+              <MessageCircleQuestion className="size-3.5" /> Ask
             </Button>
           ) : null}
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={createNote}
+            className="h-7 gap-1 px-1.5 text-xs"
+            onClick={justHighlight}
             disabled={pending}
+            title="Highlight this passage"
+          >
+            <Highlighter className="size-3.5" /> Highlight
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-1.5 text-xs"
+            onClick={highlightAndNote}
+            disabled={pending}
+            title="Highlight and add a note"
           >
             <StickyNote className="size-3.5" /> Note
           </Button>

@@ -133,3 +133,21 @@ Changed in v4:
 
 No columns were removed; existing data is unaffected by the v4 migration
 (`20260712120000_selection_provenance.sql` only adds nullable columns).
+
+## v5 additions (persistent highlights)
+
+| Table              | Purpose                                          | Notable fields                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paper_highlights` | Persistent marks on the PDF, with an optional note | page_number, selected_text, `rects jsonb` (`[{x,y,w,h}]` as page fractions 0..1 → zoom/re-render independent), color (default `amber`), `annotation_id` (nullable FK to the linked note, `ON DELETE SET NULL`); owner-only RLS |
+
+Added by `20260713090000_paper_highlights.sql`:
+
+- A **highlight** is its own object, not an annotation. "Just highlight" persists a
+  `paper_highlights` row with no `annotation_id`; "Note" persists the highlight **and** a
+  `note` annotation (carrying the highlight's `page_number`/`selected_text`/`anchor`
+  provenance) and links them via `annotation_id`. The highlight stays even if the note is
+  later deleted (`ON DELETE SET NULL`) — see AD-29.
+- The rail lists highlights and renders each linked note inside its highlight card; those
+  linked notes are excluded from the flat annotations list so a note never appears twice.
+- `rects` are normalised at selection time from `range.getClientRects()` relative to the
+  page box, so overlays re-project correctly at any zoom without re-measuring the PDF.

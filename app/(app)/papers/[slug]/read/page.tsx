@@ -32,13 +32,15 @@ export default async function ReadingModePage({ params }: { params: Promise<{ sl
   if (!paper) notFound();
   if (paper.deleted_at) redirect(`/papers/${paper.slug}`);
 
-  const [passagesRes, annotationsRes, qaRes, notesRes, activeSession] = await Promise.all([
-    supabase.from("paper_passages").select("*").eq("paper_id", paper.id).order("position"),
-    supabase.from("paper_annotations").select("*").eq("paper_id", paper.id).order("created_at"),
-    supabase.from("paper_qa").select("*").eq("paper_id", paper.id).order("position"),
-    supabase.from("paper_notes").select("*").eq("paper_id", paper.id).order("position"),
-    getActiveSession(),
-  ]);
+  const [passagesRes, annotationsRes, qaRes, notesRes, highlightsRes, activeSession] =
+    await Promise.all([
+      supabase.from("paper_passages").select("*").eq("paper_id", paper.id).order("position"),
+      supabase.from("paper_annotations").select("*").eq("paper_id", paper.id).order("created_at"),
+      supabase.from("paper_qa").select("*").eq("paper_id", paper.id).order("position"),
+      supabase.from("paper_notes").select("*").eq("paper_id", paper.id).order("position"),
+      supabase.from("paper_highlights").select("*").eq("paper_id", paper.id).order("created_at"),
+      getActiveSession(),
+    ]);
 
   const annotations = annotationsRes.data ?? [];
   const openQuestions = annotations.filter((a) => a.kind === "question" && !a.resolved).length;
@@ -91,6 +93,7 @@ export default async function ReadingModePage({ params }: { params: Promise<{ sl
         annotations={annotations}
         qa={qaRes.data ?? []}
         notes={notesRes.data ?? []}
+        highlights={highlightsRes.data ?? []}
         aiEnabled={aiEnabled()}
       />
     </div>
