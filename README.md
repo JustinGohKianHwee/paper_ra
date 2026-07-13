@@ -209,13 +209,8 @@ fresh cloud Supabase project + Vercel, sign-ups closed). In short:
 
 ## License
 
-**No license file is included yet, so this repository is _all rights reserved_ by default**
-— others may view it but have no granted rights to use, copy, modify, or redistribute it.
-This is an owner decision, intentionally left to the repository owner rather than guessed:
+**All rights reserved.** Copyright © 2026 Justin Goh Kian Hwee. See [`LICENSE`](LICENSE).
 
-- To keep it closed while sharing the code publicly, leave it as-is (or add an explicit
-  proprietary/"all rights reserved" `LICENSE`).
-- To let others use it, add a permissive license (e.g. **MIT** — simple, allows reuse with
-  attribution and no warranty) or a copyleft one (e.g. **AGPL-3.0** — requires that networked
-  deployments of modified versions also share source). The choice affects how others may run
-  and build on it; pick deliberately, then add a `LICENSE` file.
+The source is published for viewing and reference only. No license is granted: you may not
+use, copy, modify, redistribute, host, or build on any part of it without prior written
+permission from the copyright holder.
